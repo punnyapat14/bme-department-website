@@ -127,9 +127,6 @@ export default function Events() {
         {/* ---------------- Header Section ---------------- */}
         <FadeInSection delay="0.1s">
           <div className="text-center max-w-4xl mx-auto pt-2 pb-10">
-            <span className="inline-block py-1 px-4 rounded-full bg-purple-100/50 backdrop-blur-sm text-purple-700 text-[11px] font-bold tracking-widest uppercase mb-4 border border-purple-200 shadow-sm">
-              News & Activities
-            </span>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
               กิจกรรมและข่าวสาร
             </h1>
@@ -146,7 +143,6 @@ export default function Events() {
             <LightHolographicBeams />
             <div className="absolute left-0 top-10 bottom-10 w-1.5 bg-gradient-to-b from-purple-500 to-rose-400 rounded-r-lg z-10 hidden md:block"></div>
 
-            {/* ฝั่งซ้าย (ภาพ/วันที่) */}
             <div className="md:w-5/12 bg-slate-100 relative border-r border-slate-200/60 overflow-hidden min-h-[280px] flex-shrink-0 z-10 group">
               <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1000&auto=format&fit=crop" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Hero Event" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent mix-blend-multiply"></div>
@@ -157,14 +153,13 @@ export default function Events() {
               </div>
             </div>
 
-            {/* ฝั่งขวา (เนื้อหา) */}
             <div className="p-8 md:p-12 md:w-7/12 flex flex-col justify-center relative z-10">
               <div className="flex items-center gap-2 mb-4">
                 <span className="flex h-2.5 w-2.5 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                 </span>
-                <span className="text-purple-700 font-extrabold text-[11px] tracking-widest uppercase">Upcoming Event</span>
+                <span className="text-slate-800 font-extrabold text-[11px] tracking-widest uppercase">Upcoming Event</span>
               </div>
               
               <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3 leading-snug">
@@ -245,7 +240,7 @@ export default function Events() {
                       </h3>
                       
                       <div className="mt-auto">
-                        <button className="text-[12px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 group">
+                        <button className="text-[12px] font-bold text-slate-800 hover:text-indigo-800 transition-colors flex items-center gap-1 group">
                           อ่านต่อ 
                           <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
                         </button>
@@ -266,20 +261,24 @@ export default function Events() {
           {/* คอลัมน์ขวา: Sidebar (1/3) */}
           <div className="lg:col-span-1 flex flex-col gap-8">
             
-            {/* 📌 ปฏิทินกิจกรรมแบบย่อ (Upcoming Timeline) */}
+            {/* 📌 ปฏิทินกิจกรรมแบบย่อ (Upcoming Timeline) - ดีไซน์ใหม่ให้เป็นระเบียบ */}
             <div className={`p-8 ${miniBentoGlass}`}>
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200/60">
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+              <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-200/60">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-800 border border-slate-200">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 </div>
                 <h3 className="text-xl font-extrabold text-slate-900">กำหนดการเร็วๆ นี้</h3>
               </div>
 
-              <div className="relative pl-3 space-y-6 before:absolute before:inset-0 before:ml-[17px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+              {/* คอนเทนเนอร์หลักของ Timeline (มีเส้นแนวตั้งอยู่ซ้ายสุด) */}
+              <div className="relative pl-6 before:absolute before:inset-0 before:left-[5px] before:w-0.5 before:bg-slate-200 before:h-full">
                 {UPCOMING_TIMELINE.map((item, idx) => (
-                  <div key={idx} className="relative flex items-start gap-4">
-                    <div className={`absolute left-0 w-3 h-3 rounded-full mt-1.5 z-10 shadow-sm border-2 border-white ${item.isMajor ? 'bg-rose-500' : 'bg-slate-400'}`}></div>
-                    <div className="pl-6">
+                  <div key={idx} className="relative mb-6 last:mb-0">
+                    {/* จุดบนเส้น (ซ้ายสุด) */}
+                    <div className={`absolute -left-[27.5px] top-1 w-3.5 h-3.5 rounded-full ring-4 ring-white ${item.isMajor ? 'bg-rose-500' : 'bg-slate-400'}`}></div>
+                    
+                    {/* เนื้อหา (ขยับมาชิดซ้ายให้ตรงกัน) */}
+                    <div>
                       <p className="text-[12px] font-bold text-slate-500 mb-0.5">{item.date}</p>
                       <p className={`text-[14px] leading-snug ${item.isMajor ? 'font-extrabold text-slate-900' : 'font-medium text-slate-700'}`}>
                         {item.title}
@@ -294,16 +293,18 @@ export default function Events() {
               </button>
             </div>
 
-            {/* 📌 แบนเนอร์ติดต่อสอบถาม (Mini CTA) */}
+            {/* 📌 แบนเนอร์ติดต่อสอบถาม (Mini CTA) - แก้สีปุ่มให้โดดเด่น */}
             <div className={`p-8 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.2)] relative overflow-hidden`}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-[30px]"></div>
               <h3 className="text-xl font-extrabold mb-2 relative z-10">สอบถามข้อมูลเพิ่มเติม</h3>
               <p className="text-[13px] text-slate-300 mb-6 font-medium leading-relaxed relative z-10">
                 หากมีข้อสงสัยเกี่ยวกับกิจกรรม ข่าวสาร หรือหลักสูตร สามารถติดต่อภาควิชาได้โดยตรง
               </p>
-              <a href="https://lin.ee/your-line-id" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full bg-[#00B900] hover:bg-[#009900] text-white py-3 rounded-xl font-bold text-[13px] transition-colors relative z-10 shadow-md">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 3.266 8.868 8.015 9.605.313.068.736.216.845.503.1.263.031.673.015.938-.021.32-.127 1.537-.154 1.839-.033.366.166.529.475.342.308-.184 2.805-1.65 3.823-2.548 1.4-.872 3.12-1.396 4.981-1.396 6.617 0 12-4.369 12-9.738z"/></svg>
-                เพิ่มเพื่อน LINE Official
+              
+              {/* เปลี่ยนปุ่มเป็นสีขาว ตัวหนังสือสีเข้ม เพื่อให้เด่นชัดและน่ากดขึ้น */}
+              <a href="/contact" className="flex items-center justify-center gap-2 w-full bg-white hover:bg-slate-100 text-slate-900 py-3 rounded-xl font-bold text-[13px] transition-all duration-300 relative z-10 shadow-lg hover:shadow-xl hover:-translate-y-0.5">
+                <svg className="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                ติดต่อสอบถาม
               </a>
             </div>
 
