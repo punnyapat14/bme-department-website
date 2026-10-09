@@ -1,18 +1,19 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-// 📌 นำเข้ารูปโลโก้จากโฟลเดอร์ assets
-import kmutnbLogo from '../assets/KMUTNB_Logo.png'; 
-import appliedScienceLogo from '../assets/AppliedScience_Logo.png'; 
-import imiLogo from '../assets/IMI_Logo.png'; 
+// 📌 นำเข้ารูปโลโก้จากโฟลเดอร์ assets 
+import kmutnbLogo from "../../assets/KMUTNB_Logo.png";
+import appliedScienceLogo from "../../assets/AppliedScience_Logo.png";
+import imiLogo from "../../assets/IMI_Logo.png";
 
 // 📌 นำเข้ารูปภาพห้องปฏิบัติการ
-import lab01 from '../assets/Lab/Lab01.jpg';
-import lab02 from '../assets/Lab/Lab02.jpg';
-import lab03 from '../assets/Lab/Lab03.jpg';
-import lab04 from '../assets/Lab/Lab04.jpg';
-import lab05 from '../assets/Lab/Lab05.jpg';
-import lab06 from '../assets/Lab/Lab06.jpg';
+import lab01 from '../../assets/Lab/Lab01.jpg';
+import lab02 from '../../assets/Lab/Lab02.jpg';
+import lab03 from '../../assets/Lab/Lab03.jpg';
+import lab04 from '../../assets/Lab/Lab04.jpg';
+// แก้ไข Path ให้ตรงกับ 1-4 (หากไฟล์อยู่ในโฟลเดอร์ Lab) แต่ถ้าไม่ได้อยู่ ให้เอา /Lab ออกครับ
+import lab05 from '../../assets/Lab/Lab05.jpg'; 
+import lab06 from '../../assets/Lab/Lab06.jpg';
 
 // ==========================================
 // 📌 Component: ระบบ Fade-in เวลาเลื่อนจอ
@@ -204,7 +205,8 @@ const FACULTY_MEMBERS = [
   }
 ];
 
-export default function About() {
+// เปลี่ยนชื่อฟังก์ชันจาก About เป็น Department
+export default function Department() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -423,7 +425,7 @@ export default function About() {
             </div>
           </section>
 
-          {/* ---------------- 4. NEW: ห้องปฏิบัติการและสิ่งอำนวยความสะดวก (Facilities & Laboratories) ---------------- */}
+          {/* ---------------- 4. ห้องปฏิบัติการและสิ่งอำนวยความสะดวก (Facilities & Laboratories) ---------------- */}
           <section>
             <FadeInSection delay="0.2s">
               <div className="mb-10 text-center">
@@ -534,7 +536,7 @@ export default function About() {
             </FadeInSection>
           </section>
 
-          {/* ---------------- 6. NEW: โอกาสทางวิชาชีพ (Career Opportunities) ---------------- */}
+          {/* ---------------- 6. โอกาสทางวิชาชีพ (Career Opportunities) ---------------- */}
           <section>
             <FadeInSection delay="0.2s">
               <div className="mb-10 text-center">
@@ -564,75 +566,6 @@ export default function About() {
               ))}
             </div>
           </section>
-
-          {/* ---------------- 7. บุคลากรของสาขาวิชา ---------------- */}
-          <section>
-            <FadeInSection delay="0.2s">
-              <div className="mb-10 px-2 text-center">
-                <div className="text-slate-500 font-bold text-sm tracking-widest mb-3 uppercase flex items-center justify-center gap-2">
-                  <span className="w-8 h-px bg-slate-400"></span> Faculty Members <span className="w-8 h-px bg-slate-400"></span>
-                </div>
-                <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tighter">บุคลากรของสาขาวิชา</h2>
-              </div>
-            </FadeInSection>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {FACULTY_MEMBERS.map((person, idx) => (
-                <FadeInSection key={idx} delay={`${idx * 0.1}s`} className="h-full">
-                  <div className={`group flex flex-col overflow-hidden h-full ${bentoGlass}`}>
-                    
-                    <div className="relative w-full h-72 md:h-[340px] bg-slate-100 overflow-hidden border-b border-slate-100">
-                      {person.imgUrl ? (
-                        <img 
-                          src={person.imgUrl} 
-                          alt={person.nameEN} 
-                          className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105" 
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300">
-                          <svg className="w-20 h-20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
-                        </div>
-                      )}
-                      <div className="absolute bottom-0 w-full h-1/3 bg-gradient-to-t from-white/90 to-transparent"></div>
-                    </div>
-                    
-                    <div className="flex flex-col flex-1 p-6 md:p-8 bg-white/50">
-                      <h3 className="text-lg font-extrabold text-slate-900 leading-snug">{person.nameTH}</h3>
-                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1 mb-4">{person.nameEN}</p>
-                      
-                      <p className="text-[13px] font-bold text-slate-700 mb-4">{person.position}</p>
-                      
-                      <div className="flex flex-col gap-3 mb-6">
-                        <a href={`mailto:${person.email}`} className="inline-flex items-center gap-2 text-[13px] font-medium text-slate-600 hover:text-slate-900 transition-colors">
-                          <div className="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center shrink-0">
-                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path></svg>
-                          </div>
-                          {person.email}
-                        </a>
-                      </div>
-
-                      <p className="text-[13px] font-medium text-slate-600 leading-relaxed mb-6 flex-1">
-                        <span className="font-bold text-slate-800 block mb-1">สำเร็จการศึกษาจาก:</span> 
-                        {person.edu}
-                      </p>
-
-                      <div className="flex gap-2 mt-auto w-full">
-                        <a href="#" className="flex-1 bg-slate-800 hover:bg-slate-900 text-white py-2.5 px-3 rounded-xl text-center font-bold text-[12px] shadow-sm transition-colors flex items-center justify-center gap-1.5">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                          ผลงานวิชาการ
-                        </a>
-                        <a href="#" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-3 rounded-xl text-center font-bold text-[12px] shadow-sm transition-colors flex items-center justify-center gap-1.5">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
-                          Scholar
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </FadeInSection>
-              ))}
-            </div>
-          </section>
-
         </div>
       </div>
     </div>

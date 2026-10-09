@@ -257,8 +257,6 @@ export default function Shop() {
 
         {/* ---------------- Section 1: ข้อมูลร้าน ---------------- */}
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner line1="ร้านค้า" line2="สาขา BME" variant="website" />
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { icon: '📦', title: 'รับสินค้าที่ภาควิชา', desc: 'นัดรับสินค้าที่ห้องสาขาวิชาในวันและเวลาทำการ ไม่มีค่าจัดส่ง', tone: 'from-purple-50 to-indigo-50 border-purple-100' },
@@ -317,8 +315,6 @@ export default function Shop() {
 
         {/* ---------------- Section 2: รายการสินค้า ---------------- */}
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner line1="สินค้า" line2="ที่ระลึก" variant="calendar" />
-
           {/* ค้นหา + หมวดหมู่ */}
           <div className="max-w-xl mx-auto relative group mb-6">
             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">

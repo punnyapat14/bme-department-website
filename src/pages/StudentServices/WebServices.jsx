@@ -1,40 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// 📌 นำเข้ารูปภาพจาก assets ทั่วไป
-import imgREG from '../assets/Website/REG.png';
-import imgACD from '../assets/Website/ACD.png';
-import imgKMUTNB from '../assets/Website/KMUTNB.png';
-import imgApplied from '../assets/Website/Applied.png';
-import imgIMIAffair from '../assets/Website/IMI_Affairs.png'; 
-import imgKRoom from '../assets/Website/K_room.png'; 
-import imgSmartRoom from '../assets/Website/Smart_room.png'; 
-import imgMOOC from '../assets/Website/Mooc.png'; 
-import imgPhyLab from '../assets/Website/Phy_lab.png'; 
-import imgCEM from '../assets/Website/CEM.png';
-import imgKMUTNB2 from '../assets/Website/KMUTNB2.png'; 
-import imgLibrary from '../assets/Website/Library.png';
-import imgDigitaltest from '../assets/Website/Digitaltest.png';
-import imgMAP160 from '../assets/Website/MAP160.jpg'; 
+// 📌 นำเข้ารูปภาพจาก assets ทั่วไป (แก้ Path เป็น ../../ แล้ว)
+import imgREG from '../../assets/Website/REG.png';
+import imgACD from '../../assets/Website/ACD.png';
+import imgKMUTNB from '../../assets/Website/KMUTNB.png';
+import imgApplied from '../../assets/Website/Applied.png';
+import imgIMIAffair from '../../assets/Website/IMI_Affairs.png'; 
+import imgKRoom from '../../assets/Website/K_room.png'; 
+import imgSmartRoom from '../../assets/Website/Smart_room.png'; 
+import imgMOOC from '../../assets/Website/Mooc.png'; 
+import imgPhyLab from '../../assets/Website/Phy_lab.png'; 
+import imgCEM from '../../assets/Website/CEM.png';
+import imgKMUTNB2 from '../../assets/Website/KMUTNB2.png'; 
+import imgLibrary from '../../assets/Website/Library.png';
+import imgDigitaltest from '../../assets/Website/Digitaltest.png';
+import imgMAP160 from '../../assets/Website/MAP160.jpg'; 
 
-// 📌 นำเข้ารูปภาพบริการซอฟต์แวร์
-import imgAdobe from '../assets/Software/Adobe.png';
-import imgAzer from '../assets/Software/Azer.png';
-import imgEset from '../assets/Software/eset.png';
-import imgFoxis from '../assets/Software/Foxis.png';
-import imgMatlab from '../assets/Software/Matlab.png';
-import imgMs365 from '../assets/Software/ms365.png';
-import imgSolid from '../assets/Software/Solid.png';
-import imgWorkSpace from '../assets/Software/WorkSpace.png';
-import imgIcitService from '../assets/Software/ICIT_Service.png';
-import imgServiceLogo from '../assets/Software/Service.png';
+// 📌 นำเข้ารูปภาพบริการซอฟต์แวร์ (แก้ Path เป็น ../../ แล้ว)
+import imgAdobe from '../../assets/Software/Adobe.png';
+import imgAzer from '../../assets/Software/Azer.png';
+import imgEset from '../../assets/Software/eset.png';
+import imgFoxis from '../../assets/Software/Foxis.png';
+import imgMatlab from '../../assets/Software/Matlab.png';
+import imgMs365 from '../../assets/Software/ms365.png';
+import imgSolid from '../../assets/Software/Solid.png';
+import imgWorkSpace from '../../assets/Software/WorkSpace.png';
+import imgIcitService from '../../assets/Software/ICIT_Service.png';
+import imgServiceLogo from '../../assets/Software/Service.png';
 
-// 📌 นำเข้ารูปภาพสำหรับบริการสุขภาพและบัตรนักศึกษา
-import imgHealthLogo from '../assets/Health_logo.jpg';
-import imgHealthTable from '../assets/HealthTable.jpg';
-import imgInsure from '../assets/Insure.png';
-import imgBookBank from '../assets/BookBank.png';
-import imgStudentCard from '../assets/StudentCard.png';
+// 📌 นำเข้ารูปภาพสำหรับบริการสุขภาพและบัตรนักศึกษา (แก้ Path เป็น ../../ แล้ว)
+import imgHealthLogo from '../../assets/Health_logo.jpg';
+import imgHealthTable from '../../assets/HealthTable.jpg';
+import imgInsure from '../../assets/Insure.png';
+import imgBookBank from '../../assets/BookBank.png';
+import imgStudentCard from '../../assets/StudentCard.png';
 
 // ==========================================
 // 📌 ข้อมูลปฏิทินการศึกษา 

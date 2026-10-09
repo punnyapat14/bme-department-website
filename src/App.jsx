@@ -3,22 +3,39 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
-import About from './pages/About'; 
-import StudentServices from './pages/StudentServices';
-import Shop from './pages/Shop';
-import Directory from './pages/Alumni/Directory';
-import AlumniDashboard from './pages/Alumni/AlumniDashboard';
-import Events from './pages/Events';
-import Contact from './pages/Contact';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import RegisterTeacher from './pages/RegisterTeacher';
+
+// 📌 1. หมวดหมู่เกี่ยวกับสาขาวิชา (About)
+// หมายเหตุ: อย่าลืมเปลี่ยนชื่อไฟล์ About.jsx เดิม เป็น Department.jsx แล้วย้ายไปไว้ในโฟลเดอร์ About
+import Department from './pages/About/Department'; 
+import Personnel from './pages/About/Personnel';
+import Symbols from './pages/About/Symbols';
+import Songs from './pages/About/Songs';
+
+// 📌 2. หมวดหมู่สมัครเรียน
+import Admission from './pages/Admission';
+
+// 📌 3. หมวดหมู่บริการนักศึกษา (Student Services)
+import AcademicCalendar from './pages/StudentServices/AcademicCalendar';
+import WebServices from './pages/StudentServices/WebServices'; // (อาจจะใช้ StudentServices.jsx เดิมมาเปลี่ยนชื่อ)
+
+// 📌 4. หมวดหมู่แผนการเรียน (Study)
 import Curriculum from './pages/Study/Curriculum';
 import BMEFlow from './pages/Study/BMEFlow';
 
-// 📌 นำเข้าระบบกิจกรรม (ใช้แค่ 2 ไฟล์นี้)
-import ActivitiesHub from './pages/Activities/ActivitiesHub';
-import Activity from './pages/Activities/Activity';
+// 📌 5. หมวดหมู่ศิษย์เก่า (Alumni)
+import Directory from './pages/Alumni/Directory'; // ใช้เป็น 'ระบบข้อมูลศิษย์เก่า'
+import AlumniRelations from './pages/Alumni/AlumniRelations'; // ต้องสร้างไฟล์ใหม่สำหรับ 'ศิษย์เก่าสัมพันธ์'
+import AlumniDashboard from './pages/Alumni/AlumniDashboard';
+
+// 📌 6. หมวดหมู่อื่นๆ
+import Shop from './pages/Shop';
+import Events from './pages/Events';
+import Contact from './pages/Contact';
+
+// 📌 7. ระบบสมาชิก (Auth)
+import Login from './pages/Login';
+import Register from './pages/Register';
+import RegisterTeacher from './pages/RegisterTeacher';
 
 // นำเข้าโลโก้สำหรับใช้ใน Footer
 import bmeLogoBar from './assets/bme_alumni_bar.png';
@@ -40,22 +57,40 @@ export default function App() {
             <main className="flex-grow">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} /> 
-                <Route path="/directory" element={<Directory />} />
+                
+                {/* --- หมวดหมู่เกี่ยวกับสาขาวิชา --- */}
+                <Route path="/about" element={<Navigate to="/about/department" replace />} />
+                <Route path="/about/department" element={<Department />} />
+                <Route path="/about/personnel" element={<Personnel />} />
+                <Route path="/about/symbols" element={<Symbols />} />
+                <Route path="/about/songs" element={<Songs />} />
+
+                {/* --- หมวดหมู่สมัครเรียน --- */}
+                <Route path="/admission" element={<Admission />} />
+
+                {/* --- หมวดหมู่บริการนักศึกษา --- */}
+                <Route path="/student-services" element={<Navigate to="/student-services/web" replace />} />
+                <Route path="/student-services/calendar" element={<AcademicCalendar />} />
+                <Route path="/student-services/web" element={<WebServices />} />
+
+                {/* --- หมวดหมู่แผนการเรียน --- */}
+                <Route path="/curriculum" element={<Curriculum />} />
+                <Route path="/flow" element={<BMEFlow />} />
+
+                {/* --- หมวดหมู่ศิษย์เก่า (Alumni) --- */}
+                <Route path="/alumni" element={<Navigate to="/alumni/relations" replace />} />
+                <Route path="/alumni/database" element={<Directory />} />
+                <Route path="/alumni/relations" element={<AlumniRelations />} />
+
+                {/* --- หมวดหมู่อื่นๆ --- */}
                 <Route path="/events" element={<Events />} />
+                <Route path="/shop" element={<Shop />} />
                 <Route path="/contact" element={<Contact />} />
+
+                {/* --- หมวดหมู่ Auth และ Dashboard --- */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/register-teacher" element={<RegisterTeacher />} />
-                <Route path="/student-services" element={<StudentServices />} />
-                <Route path="/flow" element={<BMEFlow />} />
-                <Route path="/curriculum" element={<Curriculum />} />
-                <Route path="/shop" element={<Shop />} />
-                {/* 📌 ระบบ Route กิจกรรม */}
-                <Route path="/activities" element={<ActivitiesHub />} />
-                {/* เพิ่ม :activityId เพื่อรองรับ URL เช่น /activities/openhouse */}
-                <Route path="/activities/:activityId" element={<Activity />} />
-                
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <AlumniDashboard />
@@ -119,7 +154,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* คอลัมน์ 3: ผังเว็บไซต์ */}
+                  {/* คอลัมน์ 3: ผังเว็บไซต์ (อัปเดตใหม่) */}
                   <div className="md:col-span-3 lg:col-span-3">
                     <h3 className="text-lg font-bold text-gray-900 mb-6 border-l-4 border-red-600 pl-3">
                       ผังเว็บไซต์
@@ -127,9 +162,10 @@ export default function App() {
                     <ul className="space-y-3">
                       <li><a href="/" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">หน้าแรก</a></li>
                       <li><a href="/about" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">เกี่ยวกับสาขาวิชา</a></li>
+                      <li><a href="/admission" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">สมัครเรียน</a></li>
                       <li><a href="/events" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">ข่าวสารและกิจกรรม</a></li>
-                      <li><a href="/directory" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">ทำเนียบศิษย์เก่า (Alumni)</a></li>
-                      <li><a href="/student-services" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">เว็บไซต์บริการนักศึกษา</a></li>
+                      <li><a href="/alumni" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">ศิษย์เก่าสัมพันธ์</a></li>
+                      <li><a href="/student-services" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">บริการนักศึกษา</a></li>
                       <li><a href="/shop" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">ร้านค้าสาขาวิชา</a></li>
                       <li><a href="/contact" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">ติดต่อเรา</a></li>
                     </ul>

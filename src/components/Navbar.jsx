@@ -27,25 +27,38 @@ export default function Navbar() {
 
   const t = {
     th: {
-      home: 'หน้าแรก', about: 'เกี่ยวกับสาขาวิชา', events: 'ข่าวสารและกิจกรรม', services: 'เว็บไซต์บริการนักศึกษา',
-      activities: 'กิจกรรมสาขาวิชา', alumni: 'BME Alumni', shop: 'ร้านค้าสาขาวิชา', contact: 'ติดต่อเรา',
+      home: 'หน้าแรก', about: 'เกี่ยวกับสาขาวิชา', events: 'ข่าวสารและกิจกรรม', services: 'บริการนักศึกษา',
+      alumni: 'ศิษย์เก่าสัมพันธ์', shop: 'ร้านค้าสาขาวิชา', contact: 'ติดต่อเรา',
       login: 'เข้าสู่ระบบ', register: 'ลงทะเบียนศิษย์เก่า', logout: 'ออกจากระบบ', profile: 'โปรไฟล์',
-      // 📌 คำแปลสำหรับเมนูแผนการเรียน
-      studyPlan: 'แผนการเรียน', curriculumMap: 'แผนผังการเรียน', flowSimulator: 'จัดแผนการเรียน'
+      studyPlan: 'แผนการเรียน', curriculumMap: 'แผนผังการเรียน', flowSimulator: 'จัดแผนการเรียน',
+      // เมนูย่อย เกี่ยวกับสาขาวิชา
+      aboutDept: 'สาขาวิชา', personnel: 'บุคคลากร', symbols: 'สัญลักษณ์และแบรนด์', songs: 'บทเพลง',
+      // เมนูย่อย บริการนักศึกษา
+      academicCalendar: 'ปฏิทินการศึกษา', webServices: 'เว็บไซต์และการบริการ',
+      // เมนูย่อย ศิษย์เก่าสัมพันธ์
+      alumniSystem: 'ระบบข้อมูลศิษย์เก่า', alumniRelations: 'ศิษย์เก่าสัมพันธ์',
+      // เมนูใหม่
+      admission: 'สมัครเรียน'
     },
     en: {
-      home: 'Home', about: 'About', events: 'News & Events', services: 'Student Services',
-      activities: 'Activities', alumni: 'BME Alumni', shop: 'Shop', contact: 'Contact Us',
+      home: 'Home', about: 'About Us', events: 'News & Events', services: 'Student Services',
+      alumni: 'Alumni Relations', shop: 'Shop', contact: 'Contact Us',
       login: 'Login', register: 'Register', logout: 'Logout', profile: 'Profile',
-      // 📌 คำแปลสำหรับเมนูแผนการเรียน
-      studyPlan: 'Study Plan', curriculumMap: 'Curriculum Map', flowSimulator: 'Plan Simulator'
+      studyPlan: 'Study Plan', curriculumMap: 'Curriculum Map', flowSimulator: 'Plan Simulator',
+      aboutDept: 'Department', personnel: 'Personnel', symbols: 'Symbols & Branding', songs: 'Songs',
+      academicCalendar: 'Academic Calendar', webServices: 'Websites & Services',
+      alumniSystem: 'Alumni Database', alumniRelations: 'Alumni Relations',
+      admission: 'Admission'
     },
     zh: {
       home: '首页', about: '关于部门', events: '新闻与活动', services: '学生服务',
-      activities: '部门活动', alumni: '校友录', shop: '商店', contact: '联系我们',
+      alumni: '校友关系', shop: '商店', contact: '联系我们',
       login: '登录', register: '注册', logout: '登出', profile: '个人资料',
-      // 📌 คำแปลสำหรับเมนูแผนการเรียน
-      studyPlan: '学习计划', curriculumMap: '课程图', flowSimulator: '计划模拟器'
+      studyPlan: '学习计划', curriculumMap: '课程图', flowSimulator: '计划模拟器',
+      aboutDept: '部门', personnel: '人员', symbols: '标志与品牌', songs: '歌曲',
+      academicCalendar: '校历', webServices: '网站与服务',
+      alumniSystem: '校友数据库', alumniRelations: '校友关系',
+      admission: '入学申请'
     }
   };
 
@@ -61,7 +74,7 @@ export default function Navbar() {
           
           <div className="flex items-center gap-4 md:gap-6">
             
-            {/* โซนช่องทางติดต่อ กลับมาครบ 3 ไอคอน (Email, Facebook, Instagram) */}
+            {/* โซนช่องทางติดต่อ */}
             <div className="hidden md:flex items-center gap-3 text-purple-800">
               <a href="mailto:bme.kmutnb.th@gmail.com" className="hover:text-red-600 transition p-1" title="ส่งอีเมล">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
@@ -76,6 +89,7 @@ export default function Navbar() {
 
             <div className="hidden md:block h-6 w-px bg-gray-300"></div>
 
+            {/* โซนเปลี่ยนภาษา */}
             <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
               <button onClick={() => changeLanguage('th')} className={`w-9 h-7 flex items-center justify-center rounded ${language === 'th' ? 'bg-gray-100 shadow-inner ring-1 ring-gray-200' : 'hover:bg-gray-50'}`} title="ภาษาไทย">
                 <img src="https://flagcdn.com/w40/th.png" alt="TH" className="w-6 h-4 object-cover rounded-[2px] shadow-sm" />
@@ -90,6 +104,7 @@ export default function Navbar() {
 
             <div className="h-6 w-px bg-gray-300"></div>
 
+            {/* โซน User */}
             <div className="flex items-center gap-3">
               {user ? (
                 <>
@@ -111,31 +126,72 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-6 h-12 flex justify-start items-center gap-2 md:gap-6 overflow-x-auto md:overflow-visible text-sm hide-scrollbar">
           
           <Link to="/" className={getLinkClass('/')}>{t[language].home}</Link>
-          <Link to="/about" className={getLinkClass('/about')}>{t[language].about}</Link>
+
+          {/* 1. เมนู Dropdown: เกี่ยวกับสาขาวิชา */}
+          <div className="relative group h-12 flex items-center">
+            <button className={`flex items-center h-full border-t-2 border-transparent text-gray-700 group-hover:text-purple-700 group-hover:border-purple-300 px-3 pt-1 transition-colors font-medium whitespace-nowrap cursor-pointer ${location.pathname.startsWith('/about') ? 'border-red-600 text-purple-900 font-bold' : ''}`}>
+              {t[language].about}
+              <svg className="w-3.5 h-3.5 ml-1.5 mt-0.5 text-gray-400 group-hover:text-purple-600 transition-transform duration-300 group-hover:-rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            <div className="absolute top-full left-0 w-56 bg-[#1f1f1f] rounded-b-xl shadow-xl shadow-purple-900/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top -translate-y-2 group-hover:translate-y-0 border-t-[3px] border-red-600 overflow-hidden z-50">
+              <div className="flex flex-col py-2">
+                <Link to="/about/department" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].aboutDept}</Link>
+                <Link to="/about/personnel" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].personnel}</Link>
+                <Link to="/about/symbols" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].symbols}</Link>
+                <Link to="/about/songs" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].songs}</Link>
+              </div>
+            </div>
+          </div>
+
+          {/* เมนู สมัครเรียน */}
+          <Link to="/admission" className={getLinkClass('/admission')}>{t[language].admission}</Link>
+
+          {/* เมนู ข่าวสารและกิจกรรม */}
           <Link to="/events" className={getLinkClass('/events')}>{t[language].events}</Link>
-          <Link to="/student-services" className={getLinkClass('/student-services')}>{t[language].services}</Link>
           
-          {/* 📌 เมนู ดร็อปดาวน์ แผนการเรียน */}
+          {/* 2. เมนู Dropdown: บริการนักศึกษา */}
+          <div className="relative group h-12 flex items-center">
+            <button className={`flex items-center h-full border-t-2 border-transparent text-gray-700 group-hover:text-purple-700 group-hover:border-purple-300 px-3 pt-1 transition-colors font-medium whitespace-nowrap cursor-pointer ${location.pathname.startsWith('/student-services') ? 'border-red-600 text-purple-900 font-bold' : ''}`}>
+              {t[language].services}
+              <svg className="w-3.5 h-3.5 ml-1.5 mt-0.5 text-gray-400 group-hover:text-purple-600 transition-transform duration-300 group-hover:-rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            <div className="absolute top-full left-0 w-56 bg-[#1f1f1f] rounded-b-xl shadow-xl shadow-purple-900/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top -translate-y-2 group-hover:translate-y-0 border-t-[3px] border-red-600 overflow-hidden z-50">
+              <div className="flex flex-col py-2">
+                <Link to="/student-services/calendar" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].academicCalendar}</Link>
+                <Link to="/student-services/web" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].webServices}</Link>
+              </div>
+            </div>
+          </div>
+          
+          {/* 3. เมนู Dropdown: แผนการเรียน */}
           <div className="relative group h-12 flex items-center">
             <button className={`flex items-center h-full border-t-2 border-transparent text-gray-700 group-hover:text-purple-700 group-hover:border-purple-300 px-3 pt-1 transition-colors font-medium whitespace-nowrap cursor-pointer ${(location.pathname === '/curriculum' || location.pathname === '/flow') ? 'border-red-600 text-purple-900 font-bold' : ''}`}>
               {t[language].studyPlan}
               <svg className="w-3.5 h-3.5 ml-1.5 mt-0.5 text-gray-400 group-hover:text-purple-600 transition-transform duration-300 group-hover:-rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </button>
-            
             <div className="absolute top-full left-0 w-56 bg-[#1f1f1f] rounded-b-xl shadow-xl shadow-purple-900/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top -translate-y-2 group-hover:translate-y-0 border-t-[3px] border-red-600 overflow-hidden z-50">
               <div className="flex flex-col py-2">
-                {/* ลิงก์ไปหน้าอธิบายโครงสร้างหลักสูตร (แผนผังการเรียน) */}
                 <Link to="/curriculum" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].curriculumMap}</Link>
-                {/* ลิงก์ไปหน้าระบบจัดแผนการเรียน (Simulator) */}
                 <Link to="/flow" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].flowSimulator}</Link>
               </div>
             </div>
           </div>
 
-          {/* เมนู กิจกรรมสาขาวิชา (เปลี่ยนเป็นหน้าเดียว) */}
-          <Link to="/activities" className={getLinkClass('/activities')}>{t[language].activities}</Link>
+          {/* 4. เมนู Dropdown: ศิษย์เก่าสัมพันธ์ */}
+          <div className="relative group h-12 flex items-center">
+            <button className={`flex items-center h-full border-t-2 border-transparent text-gray-700 group-hover:text-purple-700 group-hover:border-purple-300 px-3 pt-1 transition-colors font-medium whitespace-nowrap cursor-pointer ${location.pathname.startsWith('/alumni') ? 'border-red-600 text-purple-900 font-bold' : ''}`}>
+              {t[language].alumni}
+              <svg className="w-3.5 h-3.5 ml-1.5 mt-0.5 text-gray-400 group-hover:text-purple-600 transition-transform duration-300 group-hover:-rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            <div className="absolute top-full left-0 w-56 bg-[#1f1f1f] rounded-b-xl shadow-xl shadow-purple-900/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top -translate-y-2 group-hover:translate-y-0 border-t-[3px] border-red-600 overflow-hidden z-50">
+              <div className="flex flex-col py-2">
+                <Link to="/alumni/database" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].alumniSystem}</Link>
+                <Link to="/alumni/relations" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].alumniRelations}</Link>
+              </div>
+            </div>
+          </div>
 
-          <Link to="/directory" className={getLinkClass('/directory')}>{t[language].alumni}</Link>
+          {/* เมนู ร้านค้าสาขาวิชา และ ติดต่อเรา */}
           <Link to="/shop" className={getLinkClass('/shop')}>{t[language].shop}</Link>
           <Link to="/contact" className={getLinkClass('/contact')}>{t[language].contact}</Link>
           
