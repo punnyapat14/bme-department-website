@@ -331,9 +331,6 @@ export default function StudentServices() {
 
         {/* ---------------- Header Section ---------------- */}
         <div className="text-center max-w-4xl mx-auto pt-2 pb-10">
-          <span className="inline-block py-1 px-4 rounded-full bg-purple-100/60 backdrop-blur-sm text-purple-700 text-[11px] font-bold tracking-widest uppercase mb-4 shadow-sm">
-            One-Stop Service
-          </span>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
             ศูนย์รวมเว็บไซต์บริการนักศึกษา
           </h1>
