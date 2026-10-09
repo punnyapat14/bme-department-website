@@ -3,17 +3,22 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
-import About from './pages/About'; // <--- เพิ่มบรรทัดนำเข้า About.jsx ตรงนี้
+import About from './pages/About'; 
 import StudentServices from './pages/StudentServices';
-import Directory from './pages/Directory';
+import Shop from './pages/Shop';
+import Directory from './pages/Alumni/Directory';
+import AlumniDashboard from './pages/Alumni/AlumniDashboard';
 import Events from './pages/Events';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import RegisterTeacher from './pages/RegisterTeacher';
-import AlumniDashboard from './pages/AlumniDashboard';
-import Curriculum from './pages/Curriculum';
-import BMEFlow from './pages/BMEFlow';
+import Curriculum from './pages/Study/Curriculum';
+import BMEFlow from './pages/Study/BMEFlow';
+
+// 📌 นำเข้าระบบกิจกรรม (ใช้แค่ 2 ไฟล์นี้)
+import ActivitiesHub from './pages/Activities/ActivitiesHub';
+import Activity from './pages/Activities/Activity';
 
 // นำเข้าโลโก้สำหรับใช้ใน Footer
 import bmeLogoBar from './assets/bme_alumni_bar.png';
@@ -35,7 +40,7 @@ export default function App() {
             <main className="flex-grow">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} /> {/* <--- เพิ่มบรรทัด Route สำหรับหน้า About ตรงนี้ */}
+                <Route path="/about" element={<About />} /> 
                 <Route path="/directory" element={<Directory />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/contact" element={<Contact />} />
@@ -45,6 +50,12 @@ export default function App() {
                 <Route path="/student-services" element={<StudentServices />} />
                 <Route path="/flow" element={<BMEFlow />} />
                 <Route path="/curriculum" element={<Curriculum />} />
+                <Route path="/shop" element={<Shop />} />
+                {/* 📌 ระบบ Route กิจกรรม */}
+                <Route path="/activities" element={<ActivitiesHub />} />
+                {/* เพิ่ม :activityId เพื่อรองรับ URL เช่น /activities/openhouse */}
+                <Route path="/activities/:activityId" element={<Activity />} />
+                
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <AlumniDashboard />
@@ -53,7 +64,7 @@ export default function App() {
               </Routes>
             </main>
             
-            {/* ---------------- Footer Section (แบบ 3 คอลัมน์) ---------------- */}
+            {/* ---------------- Footer Section ---------------- */}
             <footer className="bg-white border-t border-gray-200 pt-16 pb-8 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-purple-700 to-black"></div>
               
@@ -119,6 +130,7 @@ export default function App() {
                       <li><a href="/events" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">ข่าวสารและกิจกรรม</a></li>
                       <li><a href="/directory" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">ทำเนียบศิษย์เก่า (Alumni)</a></li>
                       <li><a href="/student-services" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">เว็บไซต์บริการนักศึกษา</a></li>
+                      <li><a href="/shop" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">ร้านค้าสาขาวิชา</a></li>
                       <li><a href="/contact" className="text-sm text-gray-600 font-light hover:text-red-600 transition-colors">ติดต่อเรา</a></li>
                     </ul>
                   </div>

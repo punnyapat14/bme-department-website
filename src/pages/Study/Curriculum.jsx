@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { motion } from 'framer-motion';
-import bmeFlowImage from '../assets/bme_flow.png'; 
+import bmeFlowImage from "../../assets/bme_flow.png";
 
 // 📌 ดึงข้อมูลจากไฟล์ Data (ดึง COURSE_LIST มาเพื่อหาข้อมูลตัวต่อและชื่อภาษาอังกฤษ)
-import { CURRICULUM_CATEGORIES, YEARLY_PLAN, COURSE_LIST } from '../data/curriculumData';
+import { CURRICULUM_CATEGORIES, YEARLY_PLAN, COURSE_LIST } from '../../data/curriculumData';
 
 // ==========================================
 // 📌 Component: พื้นหลังแสงออโรร่า (Theme หลัก)

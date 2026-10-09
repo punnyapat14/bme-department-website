@@ -28,24 +28,21 @@ export default function Navbar() {
   const t = {
     th: {
       home: 'หน้าแรก', about: 'เกี่ยวกับสาขาวิชา', events: 'ข่าวสารและกิจกรรม', services: 'เว็บไซต์บริการนักศึกษา',
-      activities: 'กิจกรรมสาขาวิชา', openhouse: 'BME OPEN HOUSE', volunteer: 'ค่ายจิตอาสา', bmesat: 'กีฬา BMESAT',
-      alumni: 'BME Alumni', shop: 'ร้านค้าสาขาวิชา', contact: 'ติดต่อเรา',
+      activities: 'กิจกรรมสาขาวิชา', alumni: 'BME Alumni', shop: 'ร้านค้าสาขาวิชา', contact: 'ติดต่อเรา',
       login: 'เข้าสู่ระบบ', register: 'ลงทะเบียนศิษย์เก่า', logout: 'ออกจากระบบ', profile: 'โปรไฟล์',
       // 📌 คำแปลสำหรับเมนูแผนการเรียน
       studyPlan: 'แผนการเรียน', curriculumMap: 'แผนผังการเรียน', flowSimulator: 'จัดแผนการเรียน'
     },
     en: {
       home: 'Home', about: 'About', events: 'News & Events', services: 'Student Services',
-      activities: 'Activities', openhouse: 'BME OPEN HOUSE', volunteer: 'Volunteer Camp', bmesat: 'BMESAT Sports',
-      alumni: 'BME Alumni', shop: 'Shop', contact: 'Contact Us',
+      activities: 'Activities', alumni: 'BME Alumni', shop: 'Shop', contact: 'Contact Us',
       login: 'Login', register: 'Register', logout: 'Logout', profile: 'Profile',
       // 📌 คำแปลสำหรับเมนูแผนการเรียน
       studyPlan: 'Study Plan', curriculumMap: 'Curriculum Map', flowSimulator: 'Plan Simulator'
     },
     zh: {
       home: '首页', about: '关于部门', events: '新闻与活动', services: '学生服务',
-      activities: '部门活动', openhouse: '开放日', volunteer: '志愿者营', bmesat: 'BMESAT 体育',
-      alumni: '校友录', shop: '商店', contact: '联系我们',
+      activities: '部门活动', alumni: '校友录', shop: '商店', contact: '联系我们',
       login: '登录', register: '注册', logout: '登出', profile: '个人资料',
       // 📌 คำแปลสำหรับเมนูแผนการเรียน
       studyPlan: '学习计划', curriculumMap: '课程图', flowSimulator: '计划模拟器'
@@ -135,21 +132,8 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* เมนู ดร็อปดาวน์ กิจกรรมสาขาวิชา */}
-          <div className="relative group h-12 flex items-center">
-            <button className={`flex items-center h-full border-t-2 border-transparent text-gray-700 group-hover:text-purple-700 group-hover:border-purple-300 px-3 pt-1 transition-colors font-medium whitespace-nowrap cursor-pointer ${location.pathname.includes('/activities') ? 'border-red-600 text-purple-900 font-bold' : ''}`}>
-              {t[language].activities}
-              <svg className="w-3.5 h-3.5 ml-1.5 mt-0.5 text-gray-400 group-hover:text-purple-600 transition-transform duration-300 group-hover:-rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-            </button>
-            
-            <div className="absolute top-full left-0 w-56 bg-[#1f1f1f] rounded-b-xl shadow-xl shadow-purple-900/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top -translate-y-2 group-hover:translate-y-0 border-t-[3px] border-red-600 overflow-hidden z-50">
-              <div className="flex flex-col py-2">
-                <Link to="/activities/open-house" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].openhouse}</Link>
-                <Link to="/activities/volunteer" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].volunteer}</Link>
-                <Link to="/activities/bmesat" className="px-5 py-3.5 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].bmesat}</Link>
-              </div>
-            </div>
-          </div>
+          {/* เมนู กิจกรรมสาขาวิชา (เปลี่ยนเป็นหน้าเดียว) */}
+          <Link to="/activities" className={getLinkClass('/activities')}>{t[language].activities}</Link>
 
           <Link to="/directory" className={getLinkClass('/directory')}>{t[language].alumni}</Link>
           <Link to="/shop" className={getLinkClass('/shop')}>{t[language].shop}</Link>

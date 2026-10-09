@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion'; // 📌 เพิ่ม Framer Motion
 
 // 📌 ดึงข้อมูลจากไฟล์ Data มาใช้ทั้งหมด
-import { COURSE_LIST, GRADE_POINTS, YEARLY_PLAN } from '../data/curriculumData';
+import { COURSE_LIST, GRADE_POINTS, YEARLY_PLAN } from '../../data/curriculumData';
 
 // ==========================================
 // 📌 Component: พื้นหลังแสงออโรร่า (Theme หลัก)
