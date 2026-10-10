@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
+// ==========================================
+// 📌 Component: พื้นหลังแสงออโรร่า
+// ==========================================
 export const AuroraBackground = () => (
   <div className="fixed inset-0 z-0 bg-[#fdfcff] overflow-hidden pointer-events-none">
     <style>{`
@@ -25,51 +28,57 @@ export const AuroraBackground = () => (
   </div>
 );
 
-export const SectionBanner = ({ line1, line2, variant = "website" }) => {
-  const config = {
-    calendar: { bgs: ['bg-[#3b82f6]', 'bg-[#f59e0b]', 'bg-[#10b981]', 'bg-[#8b5cf6]', 'bg-[#ec4899]', 'bg-[#0ea5e9]'], text: 'bg-[#eff6ff] text-[#1e3a8a]' },
-    website: { bgs: ['bg-[#a16dd1]', 'bg-[#01aa3a]', 'bg-[#f9703d]', 'bg-[#c5e9e7]', 'bg-[#df3470]', 'bg-[#dced11]'], text: 'bg-[#fdf4ff] text-[#4a044e]' },
-    exam: { bgs: ['bg-rose-500', 'bg-teal-500', 'bg-indigo-500', 'bg-amber-400', 'bg-fuchsia-500', 'bg-sky-400'], text: 'bg-rose-50 text-rose-950' }
-  };
-  const theme = config[variant] || config.website;
+// ==========================================
+// 📌 Component: ป้ายแบนเนอร์
+// ==========================================
+export const SectionBanner = ({ text }) => {
+  // 🎨 พื้นหลังสีม่วงอ่อน
+  const bgColor = "bg-[#bba8ff]"; 
+
+  // ☁️ คลาสสไตล์ก้อนเมฆนูน 
+  const cloudStyle = `${bgColor} rounded-full absolute shadow-[inset_6px_6px_25px_rgba(255,255,255,0.6),_0px_5px_15px_rgba(0,0,0,0.05)]`;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} whileHover={{ scale: 1.01 }} transition={{ duration: 0.4 }} className="w-full mx-auto mb-10 flex flex-col gap-2 md:gap-3 cursor-default">
-      <div className="flex gap-2 md:gap-3 h-16 md:h-20 w-full">
-        <div className={`${theme.bgs[0]} rounded-xl md:rounded-3xl w-[20%] md:w-[24%] flex items-center justify-center shadow-sm overflow-hidden`}>
-           {variant === 'exam' && <div className="w-4 h-10 md:h-12 bg-white/90 rounded-full rotate-12"></div>}
-           {variant === 'calendar' && <div className="flex gap-1.5 md:gap-2"><div className="w-2.5 md:w-3 h-8 md:h-10 bg-white/90 rounded-full"></div><div className="w-2.5 md:w-3 h-8 md:h-10 bg-white/90 rounded-full"></div></div>}
-           {variant === 'website' && <div className="flex gap-1.5 md:gap-2"><div className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 bg-white/90 rounded-full"></div><div className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 bg-white/90 rounded-full"></div><div className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 bg-white/90 rounded-full"></div></div>}
-        </div>
-        <div className={`${theme.text} rounded-xl md:rounded-3xl flex-1 flex items-center justify-center shadow-sm`}>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight">{line1}</h2>
-        </div>
-        <div className={`${theme.bgs[1]} rounded-xl md:rounded-3xl w-[18%] md:w-[20%] flex items-center justify-center shadow-sm overflow-hidden`}>
-          {variant === 'exam' && <div className="w-8 h-8 md:w-10 md:h-10 bg-white/90 rounded-full"></div>}
-          {variant === 'calendar' && <div className="w-8 h-8 md:w-10 md:h-10 bg-white/90 rounded-xl"></div>}
-          {variant === 'website' && <div className="w-8 h-8 md:w-10 md:h-10 border-[4px] md:border-[5px] border-white/90 rounded-full"></div>}
-        </div>
-      </div>
-      <div className="flex gap-2 md:gap-3 h-16 md:h-20 w-full">
-        <div className={`${theme.bgs[2]} rounded-xl md:rounded-3xl w-[20%] md:w-[24%] flex items-center justify-center shadow-sm overflow-hidden relative`}>
-          {variant === 'exam' && <div className="w-8 h-8 md:w-10 md:h-10 bg-white/90 rotate-45 rounded-sm"></div>}
-          {variant === 'calendar' && <div className="absolute inset-0 opacity-30 md:opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 2px, transparent 0)', backgroundSize: '12px 12px' }}></div>}
-          {variant === 'website' && <svg viewBox="0 0 100 100" className="w-10 h-10 md:w-12 md:h-12 fill-white/80"><circle cx="35" cy="35" r="22" /><circle cx="65" cy="35" r="22" /><circle cx="35" cy="65" r="22" /><circle cx="65" cy="65" r="22" /></svg>}
-        </div>
-        <div className={`${theme.text} rounded-xl md:rounded-3xl flex-1 flex items-center justify-center shadow-sm`}>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight">{line2}</h2>
-        </div>
-        <div className={`${theme.bgs[3]} rounded-xl md:rounded-3xl w-[12%] md:w-[15%] flex items-center justify-center shadow-sm overflow-hidden`}>
-           {variant === 'exam' && <div className="w-6 h-6 md:w-8 md:h-8 border-4 border-white/90 rounded-full border-dashed"></div>}
-           {variant === 'calendar' && <div className="w-6 h-6 md:w-8 md:h-8 bg-white/90 rounded-lg rotate-12"></div>}
-           {variant === 'website' && <div className="relative w-6 h-6 md:w-8 md:h-8"><div className="absolute top-1/2 left-0 w-full h-1.5 md:h-2 bg-white/90 -translate-y-1/2 rounded-full"></div><div className="absolute left-1/2 top-0 h-full w-1.5 md:w-2 bg-white/90 -translate-x-1/2 rounded-full"></div></div>}
-        </div>
-        <div className={`${theme.bgs[4]} rounded-xl md:rounded-3xl w-[12%] md:w-[15%] relative overflow-hidden shadow-sm hidden sm:block`}>
-          {variant === 'exam' && <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-white/40"></div>}
-          {variant === 'calendar' && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[40%] bg-white/30 rotate-45"></div>}
-          {variant === 'website' && <><div className="absolute -top-[30%] -left-[30%] w-[70%] h-[70%] bg-white/30 rounded-full"></div><div className="absolute -bottom-[30%] -right-[30%] w-[70%] h-[70%] bg-white/30 rounded-full"></div></>}
-        </div>
-      </div>
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      whileHover={{ scale: 1.015, y: -2 }}
+      transition={{ duration: 0.4 }}
+      className={`relative w-full mx-auto mb-12 h-20 md:h-24 rounded-[1.25rem] md:rounded-[2rem] overflow-hidden flex items-center justify-center cursor-default ${bgColor} shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] group`}
+    >
+      {/* 🌟 1. เลเยอร์ก้อนเมฆนูน (Puffy Blobs) */}
+      <div className={`-bottom-10 -left-6 w-28 h-28 md:w-36 md:h-36 ${cloudStyle}`} />
+      <div className={`-bottom-16 left-[15%] w-48 h-48 md:w-64 md:h-64 ${cloudStyle}`} />
+      <div className={`-bottom-20 right-[15%] w-56 h-56 md:w-72 md:h-72 ${cloudStyle}`} />
+      <div className={`-bottom-12 -right-8 w-32 h-32 md:w-40 md:h-40 ${cloudStyle}`} />
+      <div className={`-top-12 left-[45%] w-24 h-24 md:w-32 md:h-32 ${cloudStyle} opacity-60`} />
+
+      {/* ✨ 2. เลเยอร์โฮโลแกรม/เมทาลิก (Animated Holographic Overlay) */}
+      <motion.div 
+        animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+        transition={{ duration: 10, ease: "linear", repeat: Infinity }}
+        className="absolute inset-0 mix-blend-overlay opacity-60"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,107,254,0.4) 25%, rgba(0,249,248,0.3) 50%, rgba(255,255,255,0.8) 75%, rgba(255,255,255,0) 100%)",
+          backgroundSize: "200% 200%"
+        }}
+      />
+      
+      {/* ✨ 3. เคลือบกระจกมันวาว (Glossy Reflection) */}
+      <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/60 to-transparent rounded-t-[2rem] pointer-events-none" />
+
+      {/* 📝 4. ข้อความตรงกลาง (เปลี่ยนสีข้อความให้เข้มขึ้น และใส่เงาเรืองแสงสีขาว) */}
+      <h2 className="relative z-10 text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#2d1b69] drop-shadow-[0_2px_4px_rgba(255,255,255,0.7)] px-6 text-center truncate">
+        {text}
+      </h2>
+      
+      {/* 💫 5. แสงสะท้อนวิ่งผ่านตลอดเวลา (Continuous Light Sweep) */}
+      <motion.div
+        animate={{ left: ["-100%", "200%", "200%"] }}
+        transition={{ duration: 3.5, ease: "easeInOut", repeat: Infinity, repeatDelay: 0.5 }}
+        className="absolute top-0 w-[40%] h-full bg-gradient-to-r from-transparent via-white/70 to-transparent skew-x-12 z-20 pointer-events-none"
+      />
     </motion.div>
   );
 };

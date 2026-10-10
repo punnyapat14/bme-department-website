@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// 📌 นำเข้ารูปภาพจาก assets ทั่วไป (แก้ Path เป็น ../../ แล้ว)
+// 📌 นำเข้า Component พื้นหลังและแบนเนอร์จาก ThemeElements
+import { AuroraBackground, SectionBanner } from '../../components/ThemeElements';
+
+// 📌 นำเข้ารูปภาพจาก assets ทั่วไป
 import imgREG from '../../assets/Website/REG.png';
 import imgACD from '../../assets/Website/ACD.png';
 import imgKMUTNB from '../../assets/Website/KMUTNB.png';
@@ -17,7 +20,7 @@ import imgLibrary from '../../assets/Website/Library.png';
 import imgDigitaltest from '../../assets/Website/Digitaltest.png';
 import imgMAP160 from '../../assets/Website/MAP160.jpg'; 
 
-// 📌 นำเข้ารูปภาพบริการซอฟต์แวร์ (แก้ Path เป็น ../../ แล้ว)
+// 📌 นำเข้ารูปภาพบริการซอฟต์แวร์
 import imgAdobe from '../../assets/Software/Adobe.png';
 import imgAzer from '../../assets/Software/Azer.png';
 import imgEset from '../../assets/Software/eset.png';
@@ -29,7 +32,7 @@ import imgWorkSpace from '../../assets/Software/WorkSpace.png';
 import imgIcitService from '../../assets/Software/ICIT_Service.png';
 import imgServiceLogo from '../../assets/Software/Service.png';
 
-// 📌 นำเข้ารูปภาพสำหรับบริการสุขภาพและบัตรนักศึกษา (แก้ Path เป็น ../../ แล้ว)
+// 📌 นำเข้ารูปภาพสำหรับบริการสุขภาพและบัตรนักศึกษา
 import imgHealthLogo from '../../assets/Health_logo.jpg';
 import imgHealthTable from '../../assets/HealthTable.jpg';
 import imgInsure from '../../assets/Insure.png';
@@ -37,47 +40,27 @@ import imgBookBank from '../../assets/BookBank.png';
 import imgStudentCard from '../../assets/StudentCard.png';
 
 // ==========================================
-// 📌 ข้อมูลปฏิทินการศึกษา 
+// 📌 Component: ระบบ Fade-in เวลาเลื่อนจอ
 // ==========================================
-const CALENDAR_DATA = {
-  '1/2569': {
-    academic: [
-      { date: '8 - 15 มิ.ย. 2569', event: 'พบอาจารย์ที่ปรึกษา และลงทะเบียนวิชาเรียน' },
-      { date: '22 มิ.ย. 2569', event: 'เปิดภาคการศึกษาและเริ่มเรียน' },
-      { date: '6 ก.ค. 2569', event: 'วันสุดท้ายของการลงทะเบียนช้ากว่ากำหนด / รักษาสภาพ' },
-      { date: '17 - 23 ส.ค. 2569', event: 'ช่วงเวลาการสอบกลางภาคเรียน' },
-      { date: '11 ต.ค. 2569', event: 'วันสุดท้ายของการเรียน' },
-      { date: '19 ต.ค. - 1 พ.ย. 2569', event: 'ช่วงเวลาการสอบประจำภาคเรียน' },
-      { date: '1 พ.ย. 2569', event: 'วันปิดภาคการศึกษา' }
-    ],
-    registration: [
-      { date: '25 - 27 พ.ค. 2569', target: 'ระดับ ปวช.' },
-      { date: '8 มิ.ย. 2569', target: 'นักศึกษาชั้นปีที่ 2' },
-      { date: '9 มิ.ย. 2569', target: 'นักศึกษาชั้นปีที่ 3' },
-      { date: '10 มิ.ย. 2569', target: 'นักศึกษาชั้นปีที่ 4' },
-      { date: '11 มิ.ย. 2569', target: 'นักศึกษาชั้นปีที่ 5' },
-      { date: '12 - 15 มิ.ย. 2569', target: 'นักศึกษาตกค้าง และผู้ที่ยังไม่ได้ลงทะเบียน' }
-    ]
-  },
-  '2/2569': {
-    academic: [
-      { date: '9 - 16 พ.ย. 2569', event: 'พบอาจารย์ที่ปรึกษา และลงทะเบียนวิชาเรียน' },
-      { date: '23 พ.ย. 2569', event: 'เปิดภาคการศึกษาและเริ่มเรียน' },
-      { date: '8 ธ.ค. 2569', event: 'วันสุดท้ายของการลงทะเบียนช้ากว่ากำหนด / รักษาสภาพ' },
-      { date: '18 - 24 ม.ค. 2570', event: 'ช่วงเวลาการสอบกลางภาคเรียน' },
-      { date: '14 มี.ค. 2570', event: 'วันสุดท้ายของการเรียน' },
-      { date: '15 - 28 มี.ค. 2570', event: 'ช่วงเวลาการสอบประจำภาคเรียน' },
-      { date: '28 มี.ค. 2570', event: 'วันปิดภาคการศึกษา' }
-    ],
-    registration: [
-      { date: '26 - 28 ต.ค. 2569', target: 'ระดับ ปวช.' },
-      { date: '16 พ.ย. 2569', target: 'นักศึกษาชั้นปีที่ 1' },
-      { date: '17 พ.ย. 2569', target: 'นักศึกษาชั้นปีที่ 2' },
-      { date: '18 พ.ย. 2569', target: 'นักศึกษาชั้นปีที่ 3' },
-      { date: '19 พ.ย. 2569', target: 'นักศึกษาชั้นปีที่ 4 และบัณฑิตศึกษา' },
-      { date: '20 พ.ย. 2569', target: 'นักศึกษาชั้นปีที่ 5 และบัณฑิตศึกษา' }
-    ]
-  }
+const FadeInSection = ({ children, delay = "0s", className = "" }) => {
+  const [isVisible, setVisible] = useState(false);
+  const domRef = useRef();
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) setVisible(true);
+      });
+    }, { threshold: 0.15 });
+    if (domRef.current) observer.observe(domRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={domRef} className={`transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'} ${className}`} style={{ transitionDelay: delay }}>
+      {children}
+    </div>
+  );
 };
 
 // ==========================================
@@ -145,157 +128,29 @@ const instagramPages = [
   { name: "สโมสรนักศึกษาคณะวิทย์ฯ", url: "https://www.instagram.com/smoapsci.kmutnb/" }
 ];
 
-// ==========================================
-// 📌 Component: Section Banner (ปรับให้กว้างเต็มกรอบและมีหลายสีสัน)
-// ==========================================
-const SectionBanner = ({ line1, line2, variant = "website" }) => {
-  // สร้างธีมสีและสไตล์ที่ต่างกันสำหรับแต่ละ Section
-  const config = {
-    calendar: {
-      bgs: ['bg-[#3b82f6]', 'bg-[#f59e0b]', 'bg-[#10b981]', 'bg-[#8b5cf6]', 'bg-[#ec4899]', 'bg-[#0ea5e9]'],
-      text: 'bg-white text-slate-800'
-    },
-    website: { 
-      bgs: ['bg-[#a16dd1]', 'bg-[#01aa3a]', 'bg-[#f9703d]', 'bg-[#c5e9e7]', 'bg-[#df3470]', 'bg-[#dced11]'],
-      text: 'bg-[#f1ede3] text-[#343330]'
-    },
-    exam: {
-      bgs: ['bg-rose-500', 'bg-teal-500', 'bg-indigo-500', 'bg-amber-400', 'bg-fuchsia-500', 'bg-sky-400'],
-      text: 'bg-rose-50/90 text-rose-950'
-    },
-    scholarship: {
-      bgs: ['bg-amber-500', 'bg-orange-500', 'bg-yellow-400', 'bg-red-400', 'bg-pink-400', 'bg-emerald-400'],
-      text: 'bg-amber-50 text-amber-950'
-    },
-    service: {
-      bgs: ['bg-indigo-600', 'bg-cyan-500', 'bg-blue-500', 'bg-teal-400', 'bg-purple-500', 'bg-sky-300'],
-      text: 'bg-indigo-50 text-indigo-950'
-    },
-    social: {
-      bgs: ['bg-pink-500', 'bg-blue-500', 'bg-violet-500', 'bg-rose-400', 'bg-fuchsia-400', 'bg-amber-400'],
-      text: 'bg-pink-50 text-pink-950'
-    }
-  };
-
-  const theme = config[variant] || config.website;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      whileHover={{ scale: 1.01 }}
-      transition={{ duration: 0.4 }}
-      // เปลี่ยนเป็น w-full เพื่อให้ยืดเต็มขอบซ้ายขวาพอดีกับการ์ดด้านล่าง
-      className="w-full mx-auto mb-10 flex flex-col gap-2 md:gap-3 cursor-default"
-    >
-      {/* 🟢 แถวที่ 1 */}
-      <div className="flex gap-2 md:gap-3 h-16 md:h-24 w-full">
-        {/* Shape 1 */}
-        <div className={`${theme.bgs[0]} rounded-xl md:rounded-3xl w-[20%] md:w-[24%] flex items-center justify-center gap-1.5 md:gap-3 shadow-sm overflow-hidden`}>
-          {variant === 'website' && <><div className="w-3.5 h-3.5 md:w-6 md:h-6 rounded-full bg-white/90"></div><div className="w-3.5 h-3.5 md:w-6 md:h-6 rounded-full bg-white/90"></div><div className="w-3.5 h-3.5 md:w-6 md:h-6 rounded-full bg-white/90"></div></>}
-          {variant === 'calendar' && <div className="flex gap-1 md:gap-2"><div className="w-2 h-8 md:w-4 md:h-12 bg-white/90 rounded-sm"></div><div className="w-2 h-8 md:w-4 md:h-12 bg-white/90 rounded-sm"></div></div>}
-          {variant === 'exam' && <><div className="w-2 h-8 md:w-4 md:h-12 bg-white/90 rounded-full rotate-45"></div><div className="w-2 h-8 md:w-4 md:h-12 bg-white/90 rounded-full -rotate-45"></div></>}
-          {variant === 'scholarship' && <div className="w-8 h-8 md:w-14 md:h-14 bg-white/90 rounded-full flex items-center justify-center"><div className="w-4 h-4 md:w-6 md:h-6 bg-amber-500 rounded-full"></div></div>}
-          {variant === 'service' && <div className="w-8 h-8 md:w-12 md:h-12 border-4 md:border-8 border-white/90 rounded-xl"></div>}
-          {variant === 'social' && <div className="w-8 h-8 md:w-12 md:h-12 bg-white/90 rounded-full rounded-bl-none"></div>}
-        </div>
-
-        {/* Text 1 */}
-        <div className={`${theme.text} rounded-xl md:rounded-3xl flex-1 flex items-center justify-center shadow-sm`}>
-          <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight">{line1}</h2>
-        </div>
-
-        {/* Shape 2 */}
-        <div className={`${theme.bgs[1]} rounded-xl md:rounded-3xl w-[18%] md:w-[20%] flex items-center justify-center shadow-sm overflow-hidden`}>
-          {variant === 'website' && <div className="w-5 h-5 md:w-8 md:h-8 bg-white/90 rotate-45 rounded-sm"></div>}
-          {variant === 'calendar' && <div className="w-8 h-8 md:w-12 md:h-12 bg-white/90 rounded-full"></div>}
-          {variant === 'exam' && <div className="w-6 h-6 md:w-10 md:h-10 border-4 md:border-8 border-white/90 rounded-full"></div>}
-          {variant === 'scholarship' && <div className="w-0 h-0 border-l-[10px] border-l-transparent border-b-[20px] border-b-white/90 border-r-[10px] border-r-transparent md:border-l-[15px] md:border-b-[30px] md:border-r-[15px]"></div>}
-          {variant === 'service' && <div className="w-6 h-6 md:w-10 md:h-10 bg-white/90 rounded-full"></div>}
-          {variant === 'social' && <div className="w-6 h-6 md:w-10 md:h-10 bg-white/90 rounded-lg rotate-12"></div>}
-        </div>
-      </div>
-
-      {/* 🟢 แถวที่ 2 */}
-      <div className="flex gap-2 md:gap-3 h-16 md:h-24 w-full">
-        {/* Shape 3 */}
-        <div className={`${theme.bgs[2]} rounded-xl md:rounded-3xl w-[20%] md:w-[24%] flex items-center justify-center shadow-sm overflow-hidden relative`}>
-          {variant === 'website' && <svg viewBox="0 0 100 100" className="w-8 h-8 md:w-12 md:h-12 fill-[#b3e5e4]"><circle cx="35" cy="35" r="22" /><circle cx="65" cy="35" r="22" /><circle cx="35" cy="65" r="22" /><circle cx="65" cy="65" r="22" /></svg>}
-          {variant === 'calendar' && <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 2px, transparent 0)', backgroundSize: '12px 12px' }}></div>}
-          {variant === 'exam' && <div className="w-8 h-8 md:w-12 md:h-12 bg-white/90 rotate-45"></div>}
-          {variant === 'scholarship' && <><div className="absolute top-0 left-0 w-1/2 h-full bg-white/20"></div><div className="w-6 h-6 md:w-10 md:h-10 bg-white/90 rounded-full relative z-10"></div></>}
-          {variant === 'service' && <div className="flex gap-1.5 md:gap-2.5"><div className="w-2.5 h-2.5 md:w-4 md:h-4 bg-white/90 rounded-full"></div><div className="w-2.5 h-2.5 md:w-4 md:h-4 bg-white/90 rounded-full"></div><div className="w-2.5 h-2.5 md:w-4 md:h-4 bg-white/90 rounded-full"></div></div>}
-          {variant === 'social' && <div className="w-6 h-6 md:w-10 md:h-10 border-4 md:border-[6px] border-white/90 rotate-45"></div>}
-        </div>
-
-        {/* Text 2 */}
-        <div className={`${theme.text} rounded-xl md:rounded-3xl flex-1 flex items-center justify-center shadow-sm`}>
-          <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight">{line2}</h2>
-        </div>
-
-        {/* Shape 4 */}
-        <div className={`${theme.bgs[3]} rounded-xl md:rounded-3xl w-[12%] md:w-[15%] flex items-center justify-center shadow-sm overflow-hidden`}>
-          {variant === 'website' && <svg viewBox="0 0 100 100" className="w-6 h-6 md:w-10 md:h-10 fill-[#00aa38]"><path d="M50 5 L58 22 L76 15 L78 33 L95 38 L82 50 L95 62 L78 67 L76 85 L58 78 L50 95 L42 78 L24 85 L22 67 L5 62 L18 50 L5 38 L22 33 L24 15 L42 22 Z"/></svg>}
-          {variant === 'calendar' && <div className="w-6 h-6 md:w-10 md:h-10 bg-white/90 rounded-xl rotate-12"></div>}
-          {variant === 'exam' && <div className="w-full h-2 md:h-4 bg-white/90 rotate-45 scale-150"></div>}
-          {variant === 'scholarship' && <div className="w-6 h-6 md:w-10 md:h-10 bg-white/90 rounded-lg rotate-45"></div>}
-          {variant === 'service' && <div className="w-6 h-6 md:w-10 md:h-10 border-4 md:border-[6px] border-white/90 rounded-full border-dashed"></div>}
-          {variant === 'social' && <div className="flex flex-col gap-1 md:gap-2"><div className="w-6 md:w-10 h-1 md:h-1.5 bg-white/90 rounded-full"></div><div className="w-4 md:w-6 h-1 md:h-1.5 bg-white/90 rounded-full"></div></div>}
-        </div>
-
-        {/* Shape 5 */}
-        <div className={`${theme.bgs[4]} rounded-xl md:rounded-3xl w-[12%] md:w-[15%] relative overflow-hidden shadow-sm`}>
-           {variant === 'website' && <><div className="absolute -top-[40%] -left-[40%] w-[80%] h-[80%] bg-white/90 rounded-full"></div><div className="absolute -top-[40%] -right-[40%] w-[80%] h-[80%] bg-white/90 rounded-full"></div><div className="absolute -bottom-[40%] -left-[40%] w-[80%] h-[80%] bg-white/90 rounded-full"></div><div className="absolute -bottom-[40%] -right-[40%] w-[80%] h-[80%] bg-white/90 rounded-full"></div><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[55%] h-[55%] bg-white/90 rounded-full"></div></>}
-           {variant === 'calendar' && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[50%] bg-white/20 rotate-45"></div>}
-           {variant === 'exam' && <div className="absolute -right-4 -bottom-4 w-12 h-12 md:w-20 md:h-20 bg-white/30 rounded-full"></div>}
-           {variant === 'scholarship' && <><div className="absolute left-0 top-0 w-1/2 h-full bg-white/90 rounded-r-full"></div></>}
-           {variant === 'service' && <div className="absolute inset-2 md:inset-4 bg-white/90 rounded-sm md:rounded-lg"></div>}
-           {variant === 'social' && <div className="absolute -top-[20%] -left-[20%] w-[140%] h-[140%] border-[6px] md:border-[12px] border-white/30 rounded-full"></div>}
-        </div>
-
-        {/* Shape 6 (ซ่อนในจอมือถือขนาดเล็ก) */}
-        <div className={`${theme.bgs[5]} rounded-xl md:rounded-3xl w-[10%] md:w-[12%] relative overflow-hidden shadow-sm hidden sm:block`}>
-           {variant === 'website' && <><div className="absolute top-[-10%] -left-[60%] w-[110%] h-[120%] bg-white/90 rounded-[50%]"></div><div className="absolute top-[-10%] -right-[60%] w-[110%] h-[120%] bg-white/90 rounded-[50%]"></div></>}
-           {variant === 'calendar' && <div className="absolute inset-0 flex items-center justify-center"><div className="w-3 h-3 md:w-5 md:h-5 bg-white/90 rounded-full"></div></div>}
-           {variant === 'exam' && <div className="absolute bottom-0 right-0 w-0 h-0 border-l-[30px] md:border-l-[50px] border-l-transparent border-b-[30px] md:border-b-[50px] border-b-white/90"></div>}
-           {variant === 'scholarship' && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 md:w-6 md:h-6 border-[3px] border-white/90 rounded-sm rotate-45"></div>}
-           {variant === 'service' && <div className="w-full h-full bg-white/20"></div>}
-           {variant === 'social' && <div className="absolute bottom-0 w-full h-1/2 bg-white/90 rounded-t-full"></div>}
-        </div>
-      </div>
-    </motion.div>
-  );
+// ข้อมูลปฏิทินแบบ Mock (กรณีที่ยังไม่มีการนำเข้าจากไฟล์อื่น)
+const CALENDAR_DATA = {
+  '1/2569': {
+    academic: [
+      { date: '10 ส.ค. 69', event: 'เปิดภาคการศึกษาที่ 1/2569' },
+      { date: '15 ต.ค. 69', event: 'สอบกลางภาคการศึกษา' }
+    ],
+    registration: [
+      { date: '1 - 5 ส.ค. 69', target: 'นักศึกษาปริญญาตรี (รหัส 69)' },
+      { date: '6 - 10 ส.ค. 69', target: 'นักศึกษาปริญญาตรี (รหัสอื่นๆ)' }
+    ]
+  },
+  '2/2569': {
+    academic: [
+      { date: '5 ม.ค. 70', event: 'เปิดภาคการศึกษาที่ 2/2569' },
+      { date: '20 มี.ค. 70', event: 'สอบกลางภาคการศึกษา' }
+    ],
+    registration: [
+      { date: '20 - 25 ธ.ค. 69', target: 'นักศึกษาปริญญาตรี (รหัส 69)' },
+      { date: '26 - 30 ธ.ค. 69', target: 'นักศึกษาปริญญาตรี (รหัสอื่นๆ)' }
+    ]
+  }
 };
-
-// ==========================================
-// 📌 Component: พื้นหลังแสงออโรร่า
-// ==========================================
-const AuroraBackground = () => (
-  <div className="fixed inset-0 z-0 bg-[#fcfbfe] overflow-hidden pointer-events-none">
-    <style>{`
-      .aurora-effect {
-        --aurora-white: #ffffff;
-        --aurora-transparent: rgba(255,255,255,0);
-        --aurora-c1: #c084fc; 
-        --aurora-c2: #fb7185; 
-        --aurora-c3: #818cf8; 
-        --aurora-c4: #f472b6; 
-        --aurora-c5: #a78bfa; 
-        --light-gradient: repeating-linear-gradient(100deg, var(--aurora-white) 0%, var(--aurora-white) 7%, var(--aurora-transparent) 10%, var(--aurora-transparent) 12%, var(--aurora-white) 16%);
-        --aurora-bg: repeating-linear-gradient(100deg, var(--aurora-c1) 10%, var(--aurora-c2) 15%, var(--aurora-c3) 20%, var(--aurora-c4) 25%, var(--aurora-c5) 30%);
-        background-image: var(--light-gradient), var(--aurora-bg);
-        background-size: 300% 200%;
-        background-position: 50% 50%, 50% 50%;
-        filter: blur(14px); 
-      }
-      .hide-scrollbar::-webkit-scrollbar { display: none; }
-      .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    `}</style>
-    <motion.div animate={{ x: ["0%", "2%", "-2%", "0%"], y: ["0%", "-2%", "2%", "0%"] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }} className="absolute -top-[10%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-purple-300/10 blur-[100px]" />
-    <motion.div animate={{ x: ["0%", "-2%", "2%", "0%"], y: ["0%", "2%", "-2%", "0%"] }} transition={{ duration: 18, repeat: Infinity, ease: "linear" }} className="absolute -bottom-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-rose-200/10 blur-[100px]" />
-  </div>
-);
 
 export default function StudentServices() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -339,10 +194,9 @@ export default function StudentServices() {
           </p>
         </div>
 
-        {/* ---------------- 📌 ปฏิทินการศึกษาและการลงทะเบียน (เพิ่มแบนเนอร์ใหม่) ---------------- */}
+        {/* ---------------- 📌 ปฏิทินการศึกษาและการลงทะเบียน ---------------- */}
         <div className={`p-6 md:p-10 mb-16 ${bentoGlass} border border-slate-50`}>
-          {/* เพิ่ม Banner เข้ามาใน Section นี้ */}
-          <SectionBanner line1="ปฏิทิน" line2="การศึกษา" variant="calendar" />
+          <SectionBanner text="ปฏิทินการศึกษา" variant="calendar" />
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 mt-4 border-b border-slate-200/60 pb-6">
             <div>
@@ -401,7 +255,7 @@ export default function StudentServices() {
 
         {/* ---------------- 📌 1. เว็บไซต์ที่เกี่ยวข้อง ---------------- */}
         <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
-          <SectionBanner line1="เว็บไซต์" line2="บริการ" variant="website" />
+          <SectionBanner text="เว็บไซต์บริการ" variant="website" />
           
           <div className="space-y-12 mt-10">
             {visibleGroups.map((group) => {
@@ -437,7 +291,7 @@ export default function StudentServices() {
 
         {/* ---------------- 📌 2. ระบบเช็คที่นั่งสอบ ---------------- */}
         <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
-          <SectionBanner line1="ระบบเช็ค" line2="ที่นั่งสอบ" variant="exam" />
+          <SectionBanner text="ระบบเช็คที่นั่งสอบ" variant="exam" />
           
           <div className="mt-8">
             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8 pb-5 border-b border-slate-100">
@@ -476,7 +330,7 @@ export default function StudentServices() {
 
         {/* ---------------- 📌 3. ทุนการศึกษา ---------------- */}
         <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
-          <SectionBanner line1="ทุน" line2="การศึกษา" variant="scholarship" />
+          <SectionBanner text="ทุนการศึกษา" variant="scholarship" />
           
           <div className="mt-8 flex flex-col lg:flex-row gap-10 items-center">
             <div className="flex-1">
@@ -524,7 +378,7 @@ export default function StudentServices() {
 
         {/* ---------------- 📌 4. บริการและสวัสดิการ ---------------- */}
         <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
-          <SectionBanner line1="บริการ" line2="สวัสดิการ" variant="service" />
+          <SectionBanner text="บริการและสวัสดิการ" variant="service" />
           
           {/* 4.1 บริการสำนักคอมพิวเตอร์ มจพ. (ICIT Service) */}
           <div className="mt-10 mb-12">
@@ -781,7 +635,7 @@ export default function StudentServices() {
 
         {/* ---------------- 📌 5. เพจหน่วยงานและกิจกรรม ---------------- */}
         <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
-          <SectionBanner line1="เพจ" line2="หน่วยงาน" variant="social" />
+          <SectionBanner text="เพจหน่วยงาน" variant="social" />
           
           <div className="text-center mb-10 mt-6 relative z-10">
             <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">ช่องทางติดตามข่าวสาร</h2>

@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// 📌 นำเข้า Component พื้นหลังและแบนเนอร์จาก ThemeElements
+import { AuroraBackground, SectionBanner } from "../../components/ThemeElements";
+
 // 📌 นำเข้ารูปโลโก้จากโฟลเดอร์ assets 
-import kmutnbLogo from "../../assets/KMUTNB_Logo.png";
-import appliedScienceLogo from "../../assets/AppliedScience_Logo.png";
-import imiLogo from "../../assets/IMI_Logo.png";
+import kmutnbLogo from "../../assets/Symbol/KMUTNB_Logo.png";
+import appliedScienceLogo from "../../assets/Symbol/AppliedScience_Logo.png";
+import imiLogo from "../../assets/Symbol/IMI_Logo.png";
 
 // 📌 นำเข้ารูปภาพห้องปฏิบัติการ
 import lab01 from '../../assets/Lab/Lab01.jpg';
 import lab02 from '../../assets/Lab/Lab02.jpg';
 import lab03 from '../../assets/Lab/Lab03.jpg';
 import lab04 from '../../assets/Lab/Lab04.jpg';
-// แก้ไข Path ให้ตรงกับ 1-4 (หากไฟล์อยู่ในโฟลเดอร์ Lab) แต่ถ้าไม่ได้อยู่ ให้เอา /Lab ออกครับ
 import lab05 from '../../assets/Lab/Lab05.jpg'; 
 import lab06 from '../../assets/Lab/Lab06.jpg';
 
@@ -40,61 +42,7 @@ const FadeInSection = ({ children, delay = "0s", className = "" }) => {
 };
 
 // ==========================================
-// 📌 Component: พื้นหลังแสงออโรร่า
-// ==========================================
-const AuroraBackground = () => (
-  <div className="fixed inset-0 z-0 bg-[#fdfcff] overflow-hidden pointer-events-none">
-    <style>{`
-      .aurora-effect {
-        --aurora-white: #ffffff;
-        --aurora-transparent: rgba(255,255,255,0);
-        --aurora-c1: #c084fc; 
-        --aurora-c2: #fb7185; 
-        --aurora-c3: #818cf8; 
-        --aurora-c4: #f472b6; 
-        --aurora-c5: #a78bfa; 
-        --light-gradient: repeating-linear-gradient(100deg, var(--aurora-white) 0%, var(--aurora-white) 7%, var(--aurora-transparent) 10%, var(--aurora-transparent) 12%, var(--aurora-white) 16%);
-        --aurora-bg: repeating-linear-gradient(100deg, var(--aurora-c1) 10%, var(--aurora-c2) 15%, var(--aurora-c3) 20%, var(--aurora-c4) 25%, var(--aurora-c5) 30%);
-        background-image: var(--light-gradient), var(--aurora-bg);
-        background-size: 300% 200%;
-        background-position: 50% 50%, 50% 50%;
-        filter: blur(14px); 
-        mask-image: radial-gradient(ellipse at 100% 0%, black 10%, transparent 70%);
-        -webkit-mask-image: radial-gradient(ellipse at 100% 0%, black 10%, transparent 70%);
-      }
-      .aurora-effect::after {
-        content: ""; position: absolute; inset: 0;
-        background-image: var(--light-gradient), var(--aurora-bg);
-        background-size: 200% 100%; background-attachment: fixed;
-        mix-blend-mode: normal; opacity: 0.5; 
-        animation: aurora-animation 60s linear infinite;
-      }
-      @keyframes aurora-animation {
-        0% { background-position: 50% 50%, 50% 50%; }
-        100% { background-position: 350% 50%, 350% 50%; }
-      }
-      @keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-4px); }
-      }
-      .animate-float {
-        animation: float 3s ease-in-out infinite;
-      }
-      @keyframes pulse-slow {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-      }
-      .animate-pulse-slow {
-        animation: pulse-slow 4s ease-in-out infinite;
-      }
-    `}</style>
-    <motion.div animate={{ x: ["0%", "2%", "-2%", "0%"], y: ["0%", "-2%", "2%", "0%"] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }} className="absolute -top-[10%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-purple-300/20 blur-[100px]" />
-    <motion.div animate={{ x: ["0%", "-2%", "2%", "0%"], y: ["0%", "2%", "-2%", "0%"] }} transition={{ duration: 18, repeat: Infinity, ease: "linear" }} className="absolute -bottom-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-rose-200/20 blur-[100px]" />
-  </div>
-);
-
-// ==========================================
-// 📌 Component: Light Holographic Beams 
+// 📌 Component: Light Holographic Beams (ลำแสงตกแต่งการ์ด)
 // ==========================================
 const LightHolographicBeams = () => {
   return (
@@ -143,69 +91,7 @@ const LightHolographicBeams = () => {
   );
 };
 
-// ==========================================
-// 📌 ฐานข้อมูลบุคลากร 
-// ==========================================
-const FACULTY_MEMBERS = [
-  {
-    nameTH: 'รศ.ดร. สุรพันธ์ ยิ้มมั่น',
-    nameEN: 'ASSOC.PROF. DR. SURAPUN YIMMAN',
-    position: 'อาจารย์ประจำสาขาวิชา',
-    edu: 'วศ.ด. (วิศวกรรมไฟฟ้า) สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง',
-    email: 'surapun.y@sci.kmutnb.ac.th',
-    imgUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=800&auto=format&fit=crop' 
-  },
-  {
-    nameTH: 'ผศ. พยุง เดชอยู่',
-    nameEN: 'ASST.PROF. PHAYUNG DESYOO',
-    position: 'อาจารย์ประจำสาขาวิชา',
-    edu: 'วศ.ม. (วิศวกรรมไฟฟ้า) สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง',
-    email: 'phayung.d@sci.kmutnb.ac.th',
-    imgUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=800&auto=format&fit=crop' 
-  },
-  {
-    nameTH: 'ผศ. สุดารัตน์ สุนทโรภาส',
-    nameEN: 'ASST.PROF. SUDARATH SUNTAROPAS',
-    position: 'อาจารย์ประจำสาขาวิชา',
-    edu: 'วท.ม. (ฟิสิกส์) มหาวิทยาลัยศิลปากร',
-    email: 'sudarath.s@sci.kmutnb.ac.th',
-    imgUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=800&auto=format&fit=crop' 
-  },
-  {
-    nameTH: 'รศ.ดร. สุเมธ อ่ำชิต',
-    nameEN: 'ASSOC.PROF. DR. SUMET UMCHID',
-    position: 'อาจารย์ประจำสาขาวิชา',
-    edu: 'Ph.D. (Biomedical Engineering) Drexel University, ประเทศสหรัฐอเมริกา',
-    email: 'sumet.u@sci.kmutnb.ac.th',
-    imgUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=800&auto=format&fit=crop' 
-  },
-  {
-    nameTH: 'ผศ.ดร. รสจรินทร์ รัตนสุนทร',
-    nameEN: 'ASST.PROF. RODJARIN RATTANASOONTORN',
-    position: 'อาจารย์ประจำสาขาวิชา',
-    edu: 'วศ.ด. (วิศวกรรมไฟฟ้า) สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง',
-    email: 'rodjarin.r@sci.kmutnb.ac.th',
-    imgUrl: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=800&auto=format&fit=crop' 
-  },
-  {
-    nameTH: 'ผศ.ดร. ธิดารัตน์ หวังคำ',
-    nameEN: 'ASST.PROF. DR. THIDARAT WANGKHAM',
-    position: 'อาจารย์ประจำสาขาวิชา',
-    edu: 'ปร.ด.(ฟิสิกส์) มหาวิทยาลัยมหิดล',
-    email: 'thidarat.w@sci.kmutnb.ac.th',
-    imgUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop' 
-  },
-  {
-    nameTH: 'อ.ดร. นนท์ปวิธ ภูมิมณี',
-    nameEN: 'DR. NONPAWITH PHOOMMANEE',
-    position: 'อาจารย์ประจำสาขาวิชา',
-    edu: 'Ph.D. (Medical Physics and Bioengineering) University College London สหราชอาณาจักร',
-    email: 'nonpawith.p@sci.kmutnb.ac.th',
-    imgUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop' 
-  }
-];
 
-// เปลี่ยนชื่อฟังก์ชันจาก About เป็น Department
 export default function Department() {
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -222,6 +108,7 @@ export default function Department() {
 
   return (
     <div className="relative font-sans text-slate-900 bg-[#fdfcff] min-h-screen pt-16 pb-32">
+      {/* 📌 ดึง Component AuroraBackground มาจาก ThemeElements */}
       <AuroraBackground />
       
       <div className="relative z-10 w-full px-4 md:px-6">
@@ -328,11 +215,9 @@ export default function Department() {
           {/* ---------------- 2. สังกัดหน่วยงาน ---------------- */}
           <section>
             <FadeInSection delay="0.2s">
-              <div className="mb-10 text-center">
-                <div className="text-slate-500 font-bold text-sm tracking-widest mb-3 uppercase flex items-center justify-center gap-2">
-                  <span className="w-8 h-px bg-slate-400"></span> Affiliations <span className="w-8 h-px bg-slate-400"></span>
-                </div>
-                <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tighter">หน่วยงานต้นสังกัด</h2>
+              {/* 📌 ใช้ SectionBanner จาก ThemeElements.jsx */}
+              <div className="mb-10 max-w-4xl mx-auto">
+                <SectionBanner text="หน่วยงานต้นสังกัด" variant="website" />
               </div>
             </FadeInSection>
 
@@ -372,11 +257,9 @@ export default function Department() {
           {/* ---------------- 3. การแบ่งกลุ่มสาขาวิชา (Specializations) ---------------- */}
           <section>
             <FadeInSection delay="0.2s">
-              <div className="mb-10 text-center">
-                <div className="text-slate-500 font-bold text-sm tracking-widest mb-3 uppercase flex items-center justify-center gap-2">
-                  <span className="w-8 h-px bg-slate-400"></span> Specializations <span className="w-8 h-px bg-slate-400"></span>
-                </div>
-                <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tighter">การแบ่งกลุ่มสาขาวิชา</h2>
+              {/* 📌 ใช้ SectionBanner จาก ThemeElements.jsx */}
+              <div className="mb-10 max-w-4xl mx-auto">
+                <SectionBanner text="การแบ่งกลุ่มสาขาวิชา" variant="calendar" />
               </div>
             </FadeInSection>
             
@@ -428,12 +311,9 @@ export default function Department() {
           {/* ---------------- 4. ห้องปฏิบัติการและสิ่งอำนวยความสะดวก (Facilities & Laboratories) ---------------- */}
           <section>
             <FadeInSection delay="0.2s">
-              <div className="mb-10 text-center">
-                <div className="text-slate-500 font-bold text-sm tracking-widest mb-3 uppercase flex items-center justify-center gap-2">
-                  <span className="w-8 h-px bg-slate-400"></span> Facilities & Laboratories <span className="w-8 h-px bg-slate-400"></span>
-                </div>
-                <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tighter">ห้องปฏิบัติการและสิ่งอำนวยความสะดวก</h2>
-                <p className="text-slate-600 mt-4 max-w-2xl mx-auto font-medium">พื้นที่แห่งการเรียนรู้และสร้างสรรค์นวัตกรรม ด้วยเครื่องมือและเทคโนโลยีที่ทันสมัย พร้อมรองรับการฝึกปฏิบัติงานจริงของนักศึกษา</p>
+              {/* 📌 ใช้ SectionBanner จาก ThemeElements.jsx */}
+              <div className="mb-10 max-w-4xl mx-auto">
+                <SectionBanner text="ห้องปฏิบัติการและสิ่งอำนวยความสะดวก" variant="exam" />
               </div>
             </FadeInSection>
 
@@ -482,9 +362,10 @@ export default function Department() {
             <FadeInSection delay="0.2s">
               <div className={`p-10 md:p-16 text-center ${bentoGlass}`}>
                 <LightHolographicBeams />
-                <div className="mb-14 z-10 relative">
-                  <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tighter mb-2">ภาพรวมการเรียนการสอน</h2>
-                  <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">Study Overview</p>
+                
+                {/* 📌 ใช้ SectionBanner จาก ThemeElements.jsx */}
+                <div className="mb-14 z-10 relative max-w-4xl mx-auto">
+                  <SectionBanner text="ภาพรวมการเรียนการสอน" variant="scholarship" />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative max-w-5xl mx-auto z-10">
@@ -539,11 +420,9 @@ export default function Department() {
           {/* ---------------- 6. โอกาสทางวิชาชีพ (Career Opportunities) ---------------- */}
           <section>
             <FadeInSection delay="0.2s">
-              <div className="mb-10 text-center">
-                <div className="text-slate-500 font-bold text-sm tracking-widest mb-3 uppercase flex items-center justify-center gap-2">
-                  <span className="w-8 h-px bg-slate-400"></span> Career Opportunities <span className="w-8 h-px bg-slate-400"></span>
-                </div>
-                <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tighter">โอกาสทางวิชาชีพ</h2>
+              {/* 📌 ใช้ SectionBanner จาก ThemeElements.jsx */}
+              <div className="mb-10 max-w-4xl mx-auto">
+                <SectionBanner text="โอกาสทางวิชาชีพ" variant="website" />
               </div>
             </FadeInSection>
             

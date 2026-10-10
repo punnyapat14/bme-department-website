@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+
+// 📌 ดึง Component แสงออโรร่าและแบนเนอร์มาจากไฟล์ส่วนกลาง
 import { AuroraBackground, SectionBanner } from '../../components/ThemeElements';
 
 // 📌 นำเข้ารูปโลโก้เพื่อทำเป็นโลโก้บนการ์ด
@@ -287,8 +289,9 @@ export default function Songs() {
         {/* ---------------- 1. บทเพลงมหาวิทยาลัย ---------------- */}
         <div className="rounded-[3rem] bg-white/40 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
           <FadeInSection delay="0.2s">
-            <div className="mb-10 max-w-4xl mx-auto">
-              <SectionBanner line1="บทเพลง" line2="มหาวิทยาลัย" variant="website" />
+            {/* 📌 ปรับมาใช้ prop: text ตามโครงสร้างใหม่ของ SectionBanner */}
+            <div className="mb-10 max-w-4xl mx-auto w-full">
+              <SectionBanner text="บทเพลงมหาวิทยาลัย" variant="website" />
             </div>
             
             {/* 📌 ใช้ columns ในการจัดหน้าแบบ Masonry เพื่อให้การ์ดต่อกันสวยงาม */}
@@ -303,8 +306,9 @@ export default function Songs() {
         {/* ---------------- 2. บทเพลงคณะวิทยาศาสตร์ประยุกต์ ---------------- */}
         <div className="rounded-[3rem] bg-white/40 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
           <FadeInSection delay="0.3s">
-            <div className="mb-10 max-w-4xl mx-auto">
-              <SectionBanner line1="บทเพลง" line2="ประจำคณะ" variant="calendar" />
+            {/* 📌 ปรับมาใช้ prop: text ตามโครงสร้างใหม่ของ SectionBanner */}
+            <div className="mb-10 max-w-4xl mx-auto w-full">
+              <SectionBanner text="บทเพลงประจำคณะ" variant="calendar" />
             </div>
             
             <div className="columns-1 lg:columns-2 gap-8 max-w-6xl mx-auto">

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+
+// 📌 ดึง Component แสงออโรร่าและแบนเนอร์มาจากไฟล์ส่วนกลาง
 import { AuroraBackground, SectionBanner } from '../../components/ThemeElements';
 
 // 📌 รูปสัญลักษณ์ (ตรวจนามสกุลไฟล์ให้ตรงกับของจริงในโฟลเดอร์ src/assets/Symbol)
@@ -10,6 +12,12 @@ import imgAppliedScience from '../../assets/Symbol/AppliedScience_Logo.png';
 import imgIMI from '../../assets/Symbol/IMI_Logo.png';
 import imgBmeLogo from '../../assets/Symbol/bme_Logo.png';
 import imgBmeMascot from '../../assets/Symbol/bme_mascot.png';
+
+// 📌 รูปภาพสำหรับตกแต่ง FactCard
+import imgPradoo from '../../assets/Symbol/pradoo.png'; // รูปต้นประดู่แดง
+import imgK4 from '../../assets/Symbol/k4.jpg';         // รูปพื้นหลังการ์ดวันสถาปนามหาวิทยาลัย
+import imgApplied from '../../assets/Symbol/Applied.jpg'; // รูปพื้นหลังการ์ดวันก่อตั้งคณะ
+import imgImi04 from '../../assets/Symbol/imi04.jpg';     // รูปพื้นหลังการ์ดปีก่อตั้งภาควิชา
 
 // ==========================================
 // 📌 สีประจำหน่วยงาน
@@ -27,12 +35,10 @@ const bentoGlass = 'rounded-[2.5rem] bg-white/85 backdrop-blur-2xl shadow-[0_8px
 // 📌 Component: การ์ดสัญลักษณ์ พร้อมปุ่มดาวน์โหลด
 // ==========================================
 const SymbolCard = ({ img, title, tag, desc, accent }) => {
-  // ฟังก์ชันสำหรับดาวน์โหลดรูปภาพ
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = img;
-    // ตั้งชื่อไฟล์ที่จะเซฟ
-    link.download = `${tag}_KMUTNB_Logo`; 
+    link.download = `${tag}_Logo`; 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -42,12 +48,11 @@ const SymbolCard = ({ img, title, tag, desc, accent }) => {
     <motion.div
       whileHover={{ y: -6 }}
       transition={{ duration: 0.25 }}
-      className="rounded-[2rem] bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col relative group"
+      className="rounded-[2rem] bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col relative group h-full"
     >
       <div className="h-1.5 w-full" style={{ backgroundColor: accent }}></div>
       <div className="p-6 flex flex-col items-center text-center flex-1">
         
-        {/* รูปภาพและปุ่มดาวน์โหลดแบบ Hover Overlay */}
         <div className="relative w-full h-44 rounded-2xl bg-slate-50 shadow-inner flex items-center justify-center p-5 mb-5 overflow-hidden group/img">
           <img src={img} alt={title} className="max-w-full max-h-full object-contain group-hover/img:scale-105 transition-transform duration-500" />
           
@@ -62,9 +67,9 @@ const SymbolCard = ({ img, title, tag, desc, accent }) => {
           </div>
         </div>
 
-        <span className="px-3 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold mb-3">{tag}</span>
+        <span className="px-3 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold mb-3 truncate max-w-full">{tag}</span>
         <h3 className="text-lg font-black text-slate-800 mb-2 leading-snug">{title}</h3>
-        <p className="text-sm text-slate-500 font-medium leading-relaxed">{desc}</p>
+        <p className="text-[13px] text-slate-500 font-medium leading-relaxed">{desc}</p>
       </div>
     </motion.div>
   );
@@ -90,7 +95,7 @@ const ColorSwatch = ({ label, color }) => {
     <div className="rounded-[2rem] bg-white border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full">
       <div className="h-28 flex items-end p-4 relative overflow-hidden" style={{ backgroundColor: color.hex }}>
         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
-        <span className="relative z-10 px-3 py-1 rounded-full bg-white/90 text-[11px] font-black text-slate-800 shadow-sm">{label}</span>
+        <span className="relative z-10 px-3 py-1 rounded-full bg-white/90 text-[11px] font-black text-slate-800 shadow-sm truncate">{label}</span>
       </div>
       <div className="p-5 flex flex-col flex-1">
         <p className="text-base font-black text-slate-800 mb-3">{color.name}</p>
@@ -111,40 +116,59 @@ const ColorSwatch = ({ label, color }) => {
 };
 
 // ==========================================
-// 📌 Component: กล่องข้อมูลสั้นแบบมีลูกเล่น (FactCard)
+// 📌 Component: กล่องข้อมูลสั้นแบบมีลูกเล่น (FactCard) 
+// 📌 (อัปเดตขยายขนาดรูปภาพไอคอนให้ใหญ่ขึ้น)
 // ==========================================
-const FactCard = ({ icon, label, value, tone }) => (
-  <motion.div 
-    whileHover={{ y: -5, scale: 1.02 }}
-    transition={{ duration: 0.3 }}
-    className={`relative overflow-hidden rounded-[2rem] border border-white/60 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] bg-gradient-to-br ${tone} group flex flex-col h-full`}
-  >
-    {/* Watermark Icon แบบโปร่งแสงด้านหลัง */}
-    <div className="absolute -right-4 -bottom-6 text-8xl opacity-10 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500 pointer-events-none select-none">
-      {icon}
-    </div>
-    
-    <div className="relative z-10 flex flex-col h-full">
-      <div className="w-14 h-14 rounded-[1rem] bg-white/80 backdrop-blur-sm shadow-sm flex items-center justify-center text-3xl mb-auto group-hover:-translate-y-1 transition-transform duration-300">
-        {icon}
-      </div>
-      <div className="mt-8">
-        <p className="text-[12px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-black text-slate-800 tracking-tight">{value}</p>
-      </div>
-    </div>
-  </motion.div>
-);
+const FactCard = ({ icon, bgImage, label, value, tone }) => {
+  // ตรวจสอบว่า icon เป็น string ที่ลิงก์ไปรูปภาพ หรือเป็นตัวอักษร/อิโมจิ
+  const isImageIcon = typeof icon === 'string' && (icon.includes('/') || icon.includes('.'));
 
-// ==========================================
-// 📌 หัวข้อย่อยภายใน Section
-// ==========================================
-const SubHeading = ({ children, color = 'from-purple-500 to-indigo-400' }) => (
-  <h3 className="text-lg md:text-xl font-black text-slate-800 mb-5 flex items-center gap-3">
-    <span className={`w-1.5 h-6 bg-gradient-to-b ${color} rounded-full`}></span>
-    {children}
-  </h3>
-);
+  return (
+    <motion.div 
+      whileHover={{ y: -5, scale: 1.02 }}
+      transition={{ duration: 0.3 }}
+      className={`relative overflow-hidden rounded-[2rem] border border-white/60 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] bg-gradient-to-br ${tone} group flex flex-col h-full`}
+    >
+      {/* 🌟 ถ้ามี bgImage จะแสดงเป็นภาพพื้นหลัง */}
+      {bgImage && (
+        <>
+          <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${bgImage})` }}></div>
+          {/* Overlay ทำให้ภาพพื้นหลังจางลงเพื่อให้ข้อความอ่านง่าย */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] group-hover:bg-black/50 transition-colors duration-300"></div>
+        </>
+      )}
+
+      {/* Watermark Icon แบบโปร่งแสงด้านหลัง (กรณีไม่มี bgImage) */}
+      {!bgImage && !isImageIcon && (
+        <div className="absolute -right-4 -bottom-6 text-8xl opacity-10 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500 pointer-events-none select-none">
+          {icon}
+        </div>
+      )}
+      
+      <div className="relative z-10 flex flex-col h-full">
+        {/* 📌 ไอคอน หรือ รูปภาพ (ปรับขนาดถ้าเป็นรูปภาพให้ใหญ่ขึ้นเป็น w-24 h-24) */}
+        <div className={`${isImageIcon ? 'w-24 h-24 rounded-full' : 'w-14 h-14 rounded-[1rem]'} shrink-0 bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center text-3xl mb-5 group-hover:-translate-y-1 transition-transform duration-300 overflow-hidden border border-white/50`}>
+          {isImageIcon ? (
+            <img src={icon} alt={label} className="w-full h-full object-cover" />
+          ) : (
+            icon
+          )}
+        </div>
+
+        <div className="flex-1 flex flex-col justify-end">
+          {/* ปรับสีตัวอักษรให้เป็นสีขาว (สว่าง) เมื่อใช้ bgImage ทับ เพื่อให้อ่านออก */}
+          <p className={`text-[12px] font-bold mb-1.5 uppercase tracking-wide truncate ${bgImage ? 'text-white/80' : 'text-slate-500'}`}>
+            {label}
+          </p>
+          <p className={`text-xl lg:text-2xl font-black tracking-tight leading-tight drop-shadow-sm ${bgImage ? 'text-white' : 'text-slate-800'}`}>
+            {value}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 
 export default function Symbols() {
   useEffect(() => {
@@ -169,10 +193,9 @@ export default function Symbols() {
 
         {/* ---------------- 1. มหาวิทยาลัย ---------------- */}
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner line1="สัญลักษณ์" line2="มหาวิทยาลัย" variant="website" />
+          <SectionBanner text="สัญลักษณ์ระดับมหาวิทยาลัย" variant="website" />
 
-          <SubHeading color="from-rose-500 to-red-600">ตราและสัญลักษณ์</SubHeading>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <SymbolCard
               img={imgKmutnbSeal}
               tag="ตรามหาวิทยาลัย"
@@ -190,25 +213,26 @@ export default function Symbols() {
             <SymbolCard
               img={imgLogo67}
               tag="ครบรอบ 67 ปี"
-              title="สัญลักษณ์เฉลิมฉลองครบรอบ 67 ปี"
+              title="สัญลักษณ์เฉลิมฉลอง"
               desc="สัญลักษณ์เฉลิมฉลองวาระครบรอบ 67 ปีของมหาวิทยาลัย"
               accent={COLORS.university.hex}
             />
           </div>
 
-          <SubHeading color="from-amber-400 to-orange-500">สี ต้นไม้ และวันสถาปนา</SubHeading>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-stretch">
             <ColorSwatch label="สีประจำมหาวิทยาลัย" color={COLORS.university} />
-            <FactCard icon="🌳" label="ต้นไม้ประจำมหาวิทยาลัย" value="ต้นประดู่แดง" tone="from-rose-100/50 to-orange-50/50 border-rose-100" />
-            <FactCard icon="🎓" label="วันสถาปนามหาวิทยาลัย" value="19 กุมภาพันธ์" tone="from-indigo-100/50 to-purple-50/50 border-indigo-100" />
+            {/* 📌 ใช้รูป imgPradoo เป็นไอคอน */}
+            <FactCard icon={imgPradoo} label="ต้นไม้ประจำมหาวิทยาลัย" value="ต้นประดู่แดง" tone="from-rose-100/50 to-orange-50/50 border-rose-100" />
+            {/* 📌 ใช้รูป imgK4 เป็นภาพพื้นหลัง */}
+            <FactCard icon="🎓" bgImage={imgK4} label="วันสถาปนามหาวิทยาลัย" value="19 กุมภาพันธ์ พ.ศ. 2502" tone="border-indigo-100" />
           </div>
         </div>
 
         {/* ---------------- 2. คณะวิทยาศาสตร์ประยุกต์ ---------------- */}
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner line1="สัญลักษณ์" line2="คณะ" variant="calendar" />
+          <SectionBanner text="สัญลักษณ์ระดับคณะ" variant="calendar" />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <SymbolCard
               img={imgAppliedScience}
               tag="ตราคณะ"
@@ -217,49 +241,54 @@ export default function Symbols() {
               accent={COLORS.faculty.hex}
             />
             <ColorSwatch label="สีประจำคณะ" color={COLORS.faculty} />
+            {/* 📌 ใช้รูป imgApplied เป็นภาพพื้นหลัง */}
+            <FactCard icon="🏛️" bgImage={imgApplied} label="วันก่อตั้งคณะ" value="4 พฤษภาคม พ.ศ. 2531" tone="border-amber-100" />
           </div>
         </div>
 
         {/* ---------------- 3. ภาควิชา ---------------- */}
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner line1="สัญลักษณ์" line2="ภาควิชา" variant="exam" />
+          <SectionBanner text="สัญลักษณ์ระดับภาควิชา" variant="exam" />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <SymbolCard
               img={imgIMI}
-              tag="ตราภาควิชา"
-              title="ตราภาควิชาฟิสิกส์อุตสาหกรรมและอุปกรณ์การแพทย์"
-              desc="ตราสัญลักษณ์ประจำภาควิชาฟิสิกส์อุตสาหกรรมและอุปกรณ์การแพทย์ (IMI)"
+              title="ตราภาควิชา"
+              desc="ตราสัญลักษณ์ประจำภาควิชาฟิสิกส์อุตสาหกรรมและอุปกรณ์การแพทย์"
               accent={COLORS.department.hex}
             />
             <ColorSwatch label="สีประจำภาควิชา" color={COLORS.department} />
+            {/* 📌 ใช้รูป imgImi04 เป็นภาพพื้นหลัง */}
+            <FactCard icon="🔬" bgImage={imgImi04} label="ปีก่อตั้งภาควิชา" value="พ.ศ. 2531" tone="border-purple-100" />
           </div>
         </div>
 
         {/* ---------------- 4. สาขาวิชา BME ---------------- */}
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner line1="สัญลักษณ์" line2="สาขา BME" variant="website" />
+          <SectionBanner text="สัญลักษณ์ระดับสาขาวิชา" variant="scholarship" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <SymbolCard
               img={imgBmeLogo}
               tag="สัญลักษณ์สาขา"
-              title="สัญลักษณ์สาขาวิชาวิศวกรรมชีวการแพทย์"
-              desc="สัญลักษณ์ประจำสาขาวิชาวิศวกรรมชีวการแพทย์ (BME)"
+              title="สัญลักษณ์สาขา BME"
+              desc="สัญลักษณ์ประจำสาขาวิชาวิศวกรรมชีวการแพทย์"
               accent={COLORS.bme.hex}
             />
             <SymbolCard
               img={imgBmeMascot}
               tag="มาสคอต"
               title="มาสคอตประจำสาขาวิชา"
-              desc="มาสคอตประจำสาขาวิชาวิศวกรรมชีวการแพทย์ ใช้ในงานกิจกรรมและสื่อประชาสัมพันธ์ของสาขา"
+              desc="ใช้ในงานกิจกรรมและสื่อประชาสัมพันธ์ของสาขาวิชา"
               accent={COLORS.bme.hex}
             />
             <ColorSwatch label="สีประจำสาขาวิชา" color={COLORS.bme} />
+            {/* 📌 สาขาวิชายังคงใช้สี Gradient ธรรมดาแบบเดิม */}
+            <FactCard icon="🧬" label="ปีก่อตั้งสาขาวิชา" value="พ.ศ. 2557" tone="from-rose-100/50 to-pink-50/50 border-rose-100" />
           </div>
         </div>
 
-        <p className="text-center text-[11px] text-slate-500 italic px-4">
+        <p className="text-center text-[12px] font-medium text-slate-500 italic px-4">
           * โปรดใช้ตราและสัญลักษณ์ตามรูปแบบที่มหาวิทยาลัยกำหนด ไม่ดัดแปลงสีหรือสัดส่วนของตรา
         </p>
       </div>
