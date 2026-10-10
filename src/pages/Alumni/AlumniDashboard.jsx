@@ -45,7 +45,6 @@ export default function AlumniDashboard() {
 
   const formattedMemberId = `BME ${String(profileData.generation).padStart(2, '0')}-${profileData.specialization}-${String(profileData.runningNumber).padStart(4, '0')}`;
 
-  // บาร์โค้ดสร้างครั้งเดียว ไม่เปลี่ยนตอน re-render
   const [barcodeBars] = useState(() =>
     [...Array(45)].map(() => ({ w: Math.random() * 4 + 1, h: Math.random() * 20 + 80 }))
   );
@@ -118,10 +117,10 @@ export default function AlumniDashboard() {
 
         {/* ---------- Section 1: โปรไฟล์ ---------- */}
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner line1="โปรไฟล์" line2="ศิษย์เก่า" variant="website" />
+          <SectionBanner text="โปรไฟล์ศิษย์เก่า" variant="website" />
 
           {/* Cover */}
-          <div className="h-[180px] md:h-[240px] w-full relative group bg-slate-900 rounded-3xl overflow-hidden border border-slate-100 shadow-sm">
+          <div className="h-[180px] md:h-[240px] w-full relative group bg-slate-900 rounded-3xl overflow-hidden border border-slate-100 shadow-sm mt-8">
             <img src={profileData.coverImage} alt="Cover" className="w-full h-full object-cover opacity-90" />
             <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-rose-900/30"></div>
             {isEditing && (
@@ -196,9 +195,9 @@ export default function AlumniDashboard() {
 
         {/* ---------- Section 2: ฟอร์ม + บัตร ---------- */}
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner line1="ข้อมูล" line2="สมาชิก" variant="exam" />
+          <SectionBanner text="ข้อมูลสมาชิก" variant="exam" />
 
-          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start mt-8">
 
             {/* ===== คอลัมน์ซ้าย: ฟอร์ม ===== */}
             <div className="w-full lg:w-[65%]">
@@ -354,8 +353,8 @@ export default function AlumniDashboard() {
                     </div>
 
                     <div className="relative z-10 flex items-center justify-between w-full mt-2">
-                      <div className="text-[1.1rem] sm:text-[1.2rem] md:text-[1.3rem] font-bold tracking-[0.1em] sm:tracking-[0.15em] font-mono text-gray-100 drop-shadow-md">
-                        {formattedMemberId}
+                      <div className="text-xs sm:text-base md:text-xl font-bold tracking-wider font-mono text-gray-100 drop-shadow-md truncate">
+                      {formattedMemberId}
                       </div>
                       <div className="w-11 h-11 rounded-full border-[1.5px] border-gray-400/80 p-[2px] bg-gradient-to-br from-gray-600 to-gray-800 shadow-lg overflow-hidden">
                         <img src={profileData.profileImage} alt="Profile" className="w-full h-full object-cover rounded-full" />

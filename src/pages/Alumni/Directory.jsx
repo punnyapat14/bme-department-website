@@ -15,7 +15,7 @@ const mockAlumniData = [
     company: "WelTech Medical",
     image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=300&q=80",
     degree: "วท.บ. วิศวกรรมชีวการแพทย์",
-    description: "ผมมีความสนใจและเชี่ยวชาญด้านการพัฒนา Web Application แบบ Full-stack รวมถึงการประยุกต์ใช้ AI และ Machine Learning ในวงการแพทย์ ผลงานที่ภาคภูมิใจคือการพัฒนาแอปพลิเคชัน WelTech ซึ่งใช้โมเดล YOLO ในการตรวจจับและจำแนกเซลล์เม็ดเลือดแบบอัตโนมัติ นอกจากนี้ผมยังมีประสบการณ์ในการทำระบบ IoT และ Embedded Systems สำหรับอุปกรณ์ทางการแพทย์อีกด้วย",
+    description: "ผมมีความสนใจและเชี่ยวชาญด้านการพัฒนา Web Application แบบ Full-stack รวมถึงการประยุกต์ใช้ AI และ Machine Learning ในวงการแพทย์ ผลงานที่ภาคภูมิใจคือการพัฒนาแอปพลิเคชัน WelTech ซึ่งใช้โมเดล YOLO ในการตรวจจับและจำแนกเซลล์เม็ดเลือดแบบอัตโนมัติ นอกจากนี้ผมยังมีประสบการณ์ในการทำระบบ IoT และ Embedded Systems สำหรับอุปกรณ์ทางการแพทย์อีกด้วย และได้เข้าร่วมงานคืนสู่เหย้า 12 ปี BME Connext ในฐานะศิษย์เก่าระดับ VIP รหัสบัตร bb878b43-0796-4130-88de-effb07eba2c7",
     quote: "เทคโนโลยีที่ดี คือเทคโนโลยีที่สร้างผลลัพธ์ที่มีความหมายต่อชีวิตผู้คน ผมภูมิใจที่ได้นำความรู้ทางวิศวกรรมชีวการแพทย์มาพัฒนาซอฟต์แวร์ที่ช่วยยกระดับวงการสาธารณสุข",
     publishedDate: "26/09/2026 12:50 pm"
   },
@@ -106,10 +106,10 @@ export default function Directory() {
           </div>
 
           <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-            <SectionBanner line1="ทำเนียบ" line2="ศิษย์เก่า" variant="website" />
+            <SectionBanner text="ทำเนียบศิษย์เก่า" variant="website" />
 
             {/* ช่องค้นหา */}
-            <div className="max-w-xl mx-auto relative group mb-8">
+            <div className="max-w-xl mx-auto relative group mb-8 mt-6">
               <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                 <svg className="w-5 h-5 text-slate-400 group-focus-within:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               </div>
@@ -207,10 +207,10 @@ export default function Directory() {
         </button>
 
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner line1="โปรไฟล์" line2="ศิษย์เก่า" variant="exam" />
+          <SectionBanner text="โปรไฟล์ศิษย์เก่า" variant="exam" />
 
           {/* หัวข้อชื่อและตำแหน่ง */}
-          <div className="text-center mb-10">
+          <div className="text-center mb-10 mt-6">
             <span className={`inline-block px-4 py-1.5 rounded-full border text-xs font-black uppercase tracking-wider mb-4 ${getCategoryStyle(selectedAlumni.category)}`}>
               {selectedAlumni.category}
             </span>
@@ -282,7 +282,7 @@ export default function Directory() {
                 {selectedAlumni.quote && (
                   <div className="border-l-4 border-rose-400 pl-6 py-4 my-8 bg-gradient-to-r from-rose-50 to-purple-50/60 rounded-r-2xl">
                     <p className="italic text-slate-800 font-semibold text-lg mb-2">"{selectedAlumni.quote}"</p>
-                    <p className="text-sm text-slate-500">- Proud to be BME Alumni by {selectedAlumni.name}</p>
+                    <p className="text-sm text-slate-500">Proud to be BME Alumni by {selectedAlumni.name}</p>
                   </div>
                 )}
               </div>

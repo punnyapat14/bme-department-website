@@ -5,9 +5,15 @@
   --font-sans: 'Prompt', sans-serif;
 }
 
-body {
+/* 📌 ป้องกันหน้าเว็บเลื่อนซ้าย-ขวา (ล้นจอ) บนมือถือ */
+html, body {
   font-family: 'Prompt', sans-serif;
+  overflow-x: hidden;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
+
 /* Custom Scrollbar สำหรับกล่อง PDPA */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;

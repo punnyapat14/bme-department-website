@@ -38,9 +38,6 @@ export default function Admission() {
         {/* ---------------- Header Section ---------------- */}
         <div className="text-center max-w-4xl mx-auto pt-8 pb-12">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <span className="inline-block py-1.5 px-4 rounded-full bg-purple-100 text-purple-700 font-bold text-sm mb-4 tracking-wider uppercase shadow-sm border border-purple-200">
-              KMUTNB Admission
-            </span>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600">
               สมัครเรียน (Admission)
             </h1>
