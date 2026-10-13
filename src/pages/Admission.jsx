@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 // 📌 นำเข้า Component พื้นหลังและแบนเนอร์จาก ThemeElements
@@ -7,23 +7,33 @@ import { AuroraBackground, SectionBanner } from '../components/ThemeElements';
 // 📌 นำเข้ารูปภาพกราฟิกการรับสมัคร
 import admissionImg from '../assets/admission.jpg';
 
-// ==========================================
-// 📌 ข้อมูลลิงก์ที่เกี่ยวข้องกับการรับสมัคร
-// ==========================================
-const ADMISSION_LINKS = [
-  { title: 'ตรวจสอบคุณวุฒิก่อนสมัคร', url: 'https://stdadmis2.kmutnb.ac.th/Information/GradCondCheck', color: 'from-blue-500 to-cyan-500', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { title: 'ระเบียบการรับสมัคร', url: 'https://www.admission.kmutnb.ac.th/apply/round', color: 'from-rose-500 to-orange-500', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
-  { title: 'ค่าใช้จ่ายในการศึกษา', url: 'https://www.admission.kmutnb.ac.th/payment', color: 'from-emerald-500 to-teal-500', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { title: 'ประกาศรายชื่อผู้มีสิทธิ์สอบ', url: 'https://www.admission.kmutnb.ac.th/announce/list-eligible-candidates', color: 'from-purple-500 to-indigo-500', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
-  { title: 'ประกาศผลสอบคัดเลือก', url: 'https://www.admission.kmutnb.ac.th/announce/entrance-exam', color: 'from-amber-500 to-orange-500', icon: 'M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z' },
-  { title: 'ประกาศรายชื่อผู้ยืนยันสิทธิ์', url: 'https://www.admission.kmutnb.ac.th/announce/assert', color: 'from-pink-500 to-rose-500', icon: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z' },
-  { title: 'ดาวน์โหลดเอกสาร/แบบฟอร์ม', url: 'https://www.admission.kmutnb.ac.th/download', color: 'from-slate-600 to-slate-800', icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4' },
-  { title: 'ระบบ TCAS ส่วนกลาง (ทปอ.)', url: 'https://www.mytcas.com/', color: 'from-blue-600 to-indigo-700', icon: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9' }
-];
-
 export default function Admission() {
+  // 📌 1. สร้าง State สำหรับเก็บข้อมูลที่ดึงมาจาก Google Sheets
+  const [admissionLinks, setAdmissionLinks] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    // 📌 2. ฟังก์ชันดึงข้อมูลจาก Google Sheets (Apps Script)
+    const fetchLinksData = async () => {
+      try {
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxlsclDJj4WcyWhJwguFWiuXBnn717G1ewUXi3movFfTUYtDxRkYyKCZN549sJjY0AT/exec'; 
+        
+        const response = await fetch(`${WEB_APP_URL}?sheet=Admission`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          setAdmissionLinks(result.data); // นำข้อมูลไปเก็บใน State
+        }
+      } catch (error) {
+        console.error('Error fetching admission links:', error);
+      } finally {
+        setIsLoading(false); // ปิดสถานะกำลังโหลด
+      }
+    };
+
+    fetchLinksData();
   }, []);
 
   const bentoGlass = "rounded-[2.5rem] bg-white/85 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-50 relative overflow-hidden";
@@ -58,7 +68,6 @@ export default function Admission() {
           </div>
             
           <div className="flex flex-col items-center relative z-10">
-            {/* 📌 ใช้ SectionBanner แทน Header */}
             <div className="mb-10 w-full max-w-4xl">
               <SectionBanner text="ประกาศการรับสมัครนักศึกษาใหม่" variant="exam" />
             </div>
@@ -92,7 +101,6 @@ export default function Admission() {
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className={`p-6 sm:p-8 md:p-12 mb-16 ${bentoGlass}`}
         >
-          {/* 📌 ใช้ SectionBanner แทน Header */}
           <div className="mb-8 w-full max-w-4xl mx-auto">
             <SectionBanner text="ข้อมูลรับสมัครสาขาวิชาวิศวกรรมชีวการแพทย์" variant="scholarship" />
           </div>
@@ -163,7 +171,6 @@ export default function Admission() {
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className={`p-8 md:p-12 mb-16 ${bentoGlass}`}
         >
-          {/* 📌 ใช้ SectionBanner แทน Header */}
           <div className="mb-6 w-full max-w-4xl mx-auto">
             <SectionBanner text="สรุปขั้นตอนการสมัครเข้าศึกษา" variant="calendar" />
           </div>
@@ -229,37 +236,46 @@ export default function Admission() {
           </div>
         </motion.div>
 
-        {/* ---------------- 3. ลิงก์ที่เกี่ยวข้อง (Quick Links) ---------------- */}
+        {/* ---------------- 3. ระบบและข้อมูลที่เกี่ยวข้อง (ส่วนที่มีการเชื่อมต่อ DB) ---------------- */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className={`p-8 md:p-12 mb-16 ${bentoGlass}`}
         >
-          {/* 📌 ใช้ SectionBanner แทน Header */}
           <div className="mb-10 w-full max-w-4xl mx-auto">
             <SectionBanner text="ระบบและข้อมูลที่เกี่ยวข้อง" variant="website" />
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {ADMISSION_LINKS.map((link, idx) => (
-              <a 
-                key={idx} 
-                href={link.url} 
-                target="_blank" 
-                rel="noreferrer"
-                className="group relative overflow-hidden bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 flex items-center gap-4"
-              >
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${link.color} text-white flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform`}>
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={link.icon}></path></svg>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-slate-800 text-sm group-hover:text-purple-700 transition-colors">{link.title}</h3>
-                </div>
-                <div className="text-slate-300 group-hover:text-purple-500 transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"></path></svg>
-                </div>
-              </a>
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-10">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mb-4"></div>
+              <p className="text-slate-500 font-medium">กำลังโหลดข้อมูลระบบรับสมัคร...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {admissionLinks.map((link, idx) => (
+                <a 
+                  key={link.id || idx} 
+                  href={link.url} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="group relative overflow-hidden bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 flex items-center gap-4"
+                >
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${link.color || 'from-slate-400 to-slate-500'} text-white flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {/* หากใน DB ไม่มี icon ให้ใช้ไอคอนกลมๆ เป็น default */}
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={link.icon || 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'}></path>
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-slate-800 text-sm group-hover:text-purple-700 transition-colors">{link.title}</h3>
+                  </div>
+                  <div className="text-slate-300 group-hover:text-purple-500 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"></path></svg>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* ---------------- 4. ข้อมูลติดต่อ ---------------- */}
@@ -267,7 +283,6 @@ export default function Admission() {
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className={`p-8 md:p-12 mb-8 ${bentoGlass}`}
         >
-          {/* 📌 ใช้ SectionBanner แทน Header */}
           <div className="mb-10 w-full max-w-4xl mx-auto">
             <SectionBanner text="ติดต่อสอบถามข้อมูล" variant="website" />
           </div>

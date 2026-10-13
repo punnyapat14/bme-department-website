@@ -1,26 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createClient } from '@supabase/supabase-js';
 
 // 📌 นำเข้า Component พื้นหลังและแบนเนอร์
 import { AuroraBackground, SectionBanner } from "../../components/ThemeElements";
 
-// 📌 นำเข้ารูปภาพจาก assets ทั่วไป
-import imgREG from "../../assets/Website/REG.png";
-import imgACD from '../../assets/Website/ACD.png';
-import imgKMUTNB from '../../assets/Website/KMUTNB.png';
-import imgApplied from '../../assets/Website/Applied.png';
-import imgIMIAffair from '../../assets/Website/IMI_Affairs.png'; 
-import imgKRoom from '../../assets/Website/K_room.png'; 
-import imgSmartRoom from '../../assets/Website/Smart_room.png'; 
-import imgMOOC from '../../assets/Website/Mooc.png'; 
-import imgPhyLab from '../../assets/Website/Phy_lab.png'; 
-import imgCEM from '../../assets/Website/CEM.png';
-import imgKMUTNB2 from '../../assets/Website/KMUTNB2.png'; 
-import imgLibrary from '../../assets/Website/Library.png';
-import imgDigitaltest from '../../assets/Website/Digitaltest.png';
-import imgMAP160 from '../../assets/Website/MAP160.jpg'; 
-
-// 📌 นำเข้ารูปภาพบริการซอฟต์แวร์ (แก้เป็น ../../ ทั้งหมดแล้ว)
+// 📌 นำเข้ารูปภาพบริการ (เฉพาะอันที่คงตัวไว้)
+import imgServiceLogo from '../../assets/Software/Service.png';
+import imgIcitService from '../../assets/Software/ICIT_Service.png';
 import imgAdobe from '../../assets/Software/Adobe.png';
 import imgAzer from '../../assets/Software/Azer.png';
 import imgEset from '../../assets/Software/eset.png';
@@ -29,14 +16,18 @@ import imgMatlab from '../../assets/Software/Matlab.png';
 import imgMs365 from '../../assets/Software/ms365.png';
 import imgSolid from '../../assets/Software/Solid.png';
 import imgWorkSpace from '../../assets/Software/WorkSpace.png';
-import imgIcitService from '../../assets/Software/ICIT_Service.png';
-import imgServiceLogo from '../../assets/Software/Service.png';
-
-// 📌 นำเข้ารูปภาพสำหรับบริการสุขภาพและบัตรนักศึกษา (แก้เป็น ../../ ทั้งหมดแล้ว)
 import imgHealthLogo from '../../assets/Health_logo.jpg';
 import imgHealthTable from '../../assets/HealthTable.jpg';
 import imgInsure from '../../assets/Insure.png';
-import imgBookBank from '../../assets/BookBank.png';
+import imgMAP160 from '../../assets/Website/MAP160.jpg';
+
+// ==========================================
+// 📌 Config API และ Supabase
+// ==========================================
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const GOOGLE_SHEET_API_URL = import.meta.env.VITE_DEPARTMENT_API_URL;
 
 // ==========================================
 // 📌 Component: ระบบ Fade-in เวลาเลื่อนจอ
@@ -63,33 +54,13 @@ const FadeInSection = ({ children, delay = "0s", className = "" }) => {
 };
 
 // ==========================================
-// 📌 ข้อมูลระบบเช็คที่นั่งสอบแยกคณะ
+// 📌 ข้อมูลที่ยังเป็น Static (ไม่มีการแก้ไขบ่อย)
 // ==========================================
 const EXAM_SEATING_LINKS = [
   { faculty: 'คณะวิทยาศาสตร์ประยุกต์', url: 'http://www.scibase.kmutnb.ac.th/examroom/datatrain.html', iconColor: 'text-amber-500 bg-amber-50', hoverColor: 'hover:bg-amber-50/60' },
   { faculty: 'คณะวิศวกรรมศาสตร์', url: 'https://www.eng.kmutnb.ac.th/eservice/exam/seating', iconColor: 'text-rose-500 bg-rose-50', hoverColor: 'hover:bg-rose-50/60' },
   { faculty: 'คณะครุศาสตร์อุตสาหกรรม', url: 'https://exam.fte.kmutnb.ac.th/search/name', iconColor: 'text-blue-500 bg-blue-50', hoverColor: 'hover:bg-blue-50/60' },
   { faculty: 'คณะพัฒนาอุตสาหกรรม', url: 'https://bidkmutnbexam.my.canva.site/dagzyw5euag', iconColor: 'text-emerald-500 bg-emerald-50', hoverColor: 'hover:bg-emerald-50/60' }
-];
-
-// ==========================================
-// 📌 ข้อมูลเว็บไซต์บริการทั้งหมด
-// ==========================================
-const ALL_SERVICES = [
-  { name: 'เว็บไซต์มหาวิทยาลัย', short: 'KMUTNB', category: 'ส่วนกลางและระบบการศึกษา', url: 'https://www.kmutnb.ac.th/', img: imgKMUTNB, desc: 'ข่าวสารและข้อมูลทางการของมหาวิทยาลัย', color: 'from-orange-500 to-amber-500' },
-  { name: 'คณะวิทยาศาสตร์ประยุกต์', short: 'SCI', category: 'ส่วนกลางและระบบการศึกษา', url: 'http://www.sci.kmutnb.ac.th/', img: imgApplied, desc: 'เว็บไซต์หลักคณะวิทยาศาสตร์ประยุกต์', color: 'from-amber-500 to-yellow-500' },
-  { name: 'กองบริการการศึกษา', short: 'ACD', category: 'ส่วนกลางและระบบการศึกษา', url: 'https://acdserv.kmutnb.ac.th/home', img: imgACD, desc: 'ปฏิทินการศึกษา ข้อมูลหลักสูตร และระเบียบ', color: 'from-rose-500 to-red-600' },
-  { name: 'บริการการศึกษา (REG)', short: 'REG', category: 'ส่วนกลางและระบบการศึกษา', url: 'https://reg2.kmutnb.ac.th/registrar/', img: imgREG, desc: 'ลงทะเบียนเรียน ตรวจสอบเกรด ตารางสอน', color: 'from-emerald-500 to-teal-600' },
-  { name: 'บริการเรียนออนไลน์', short: 'MOOC', category: 'ส่วนกลางและระบบการศึกษา', url: 'https://kmutnbmooc.com/', img: imgMOOC, desc: 'คอร์สเรียนออนไลน์สะสมหน่วยกิตและเสริมทักษะ', color: 'from-amber-500 to-orange-600' },
-  { name: 'สอบสมรรถนะดิจิทัล', short: 'DL', category: 'ส่วนกลางและระบบการศึกษา', url: 'https://dl.kmutnb.ac.th/', img: imgDigitaltest, desc: 'ทดสอบทักษะความรู้ดิจิทัลตามเกณฑ์มหาวิทยาลัย', color: 'from-blue-500 to-cyan-500' },
-  { name: 'สอบวัดระดับภาษาอังกฤษ', short: 'CEM', category: 'ส่วนกลางและระบบการศึกษา', url: 'https://cem.kmutnb.ac.th/', img: imgCEM, desc: 'ศูนย์ทดสอบทางภาษาและพัฒนาสื่อดิจิทัล', color: 'from-indigo-500 to-purple-600' },
-  { name: 'กองทุนกู้ยืมเพื่อการศึกษา (กยศ.)', short: 'กยศ', category: 'ส่วนกลางและระบบการศึกษา', url: 'https://sa.op.kmutnb.ac.th/studentloan/', img: imgKMUTNB2, desc: 'ข้อมูลทุนการศึกษาและเงินกู้ยืมเพื่อการศึกษา', color: 'from-pink-500 to-rose-500' },
-
-  { name: 'บริการห้อง K-Room', short: 'K-RM', category: 'ทรัพยากร พื้นที่เรียนรู้ และกิจกรรม', url: 'https://k-room.icit.kmutnb.ac.th/web/room/list-room', img: imgKRoom, desc: 'จองห้องค้นคว้ากลุ่ม ติวหนังสือ และทำงานร่วมกัน', color: 'from-indigo-500 to-violet-600' },
-  { name: 'บริการห้อง Smart Room', short: 'S-RM', category: 'ทรัพยากร พื้นที่เรียนรู้ และกิจกรรม', url: 'https://smartroom.lib.kmutnb.ac.th/', img: imgSmartRoom, desc: 'ห้องประชุมอัจฉริยะ พร้อมอุปกรณ์มัลติมีเดีย', color: 'from-purple-500 to-fuchsia-600' },
-  { name: 'หอสมุดกลาง มจพ.', short: 'LIB', category: 'ทรัพยากร พื้นที่เรียนรู้ และกิจกรรม', url: 'https://library.kmutnb.ac.th/', img: imgLibrary, desc: 'สืบค้นหนังสือ ฐานข้อมูลงานวิจัย และพื้นที่อ่านหนังสือ', color: 'from-amber-600 to-red-600' },
-  { name: 'ห้องปฏิบัติการฟิสิกส์', short: 'PHYS', category: 'ทรัพยากร พื้นที่เรียนรู้ และกิจกรรม', url: 'https://sites.google.com/sci.kmutnb.ac.th/physclass/home', img: imgPhyLab, desc: 'คู่มือการทดลอง เอกสารแล็บฟิสิกส์ทั่วไป', color: 'from-emerald-500 to-green-600' },
-  { name: 'กิจกรรมนักศึกษาภาควิชา IMI', short: 'IMI', category: 'ทรัพยากร พื้นที่เรียนรู้ และกิจกรรม', url: 'https://sites.google.com/sci.kmutnb.ac.th/imi-student-affairs/', img: imgIMIAffair, desc: 'ประชาสัมพันธ์กิจกรรมและชั่วโมงกิจกรรมนักศึกษา', color: 'from-rose-500 to-purple-600' }
 ];
 
 const SERVICE_GROUPS = [
@@ -130,17 +101,60 @@ const instagramPages = [
 export default function StudentServices() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('ทั้งหมด');
+  
+  // 📌 State สำหรับเก็บข้อมูลที่ดึงจาก Sheets
+  const [servicesData, setServicesData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 📌 State สำหรับระบบแอดมิน
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    id: '', category: 'ส่วนกลางและระบบการศึกษา', name: '', short: '', url: '', desc: '', color: 'from-blue-500 to-cyan-500', img: ''
+  });
 
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) setIsAdmin(true);
+    };
+
+    const fetchServicesData = async () => {
+      try {
+        const response = await fetch(`${GOOGLE_SHEET_API_URL}?sheet=Web`);
+        const result = await response.json();
+        if (result.status === 'success') {
+          const mappedData = result.data.map(item => ({
+            id: item.ID || item.id,
+            category: item.Category || item.category,
+            name: item.Name || item.name,
+            short: item.Short || item.short,
+            url: item.URL || item.url,
+            desc: item.Description || item.desc,
+            color: item.Color || item.color,
+            img: item.Image || item.img || 'https://via.placeholder.com/150'
+          }));
+          setServicesData(mappedData);
+        }
+      } catch (error) {
+        console.error('Error fetching web services:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAdmin();
+    fetchServicesData();
   }, []);
 
   const categories = ['ทั้งหมด', 'ส่วนกลางและระบบการศึกษา', 'ทรัพยากร พื้นที่เรียนรู้ และกิจกรรม'];
-
   const visibleGroups = SERVICE_GROUPS.filter(group => activeTab === 'ทั้งหมด' || activeTab === group.id);
 
   const getFilteredItems = (categoryId) => {
-    return ALL_SERVICES.filter(item => {
+    return servicesData.filter(item => {
       const matchCategory = item.category === categoryId;
       const matchSearch =
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -150,7 +164,73 @@ export default function StudentServices() {
     });
   };
 
+  // 📌 ฟังก์ชันจัดการสำหรับ Admin
+  const handleOpenModal = (service = null) => {
+    if (service) {
+      setFormData(service);
+    } else {
+      setFormData({ id: '', category: 'ส่วนกลางและระบบการศึกษา', name: '', short: '', url: '', desc: '', color: 'from-blue-500 to-cyan-500', img: '' });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    const action = formData.id ? 'update' : 'create';
+    
+    try {
+      const response = await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheet: 'Web', action: action, data: formData }),
+      });
+      
+      const result = await response.json();
+      if (result.status === 'success') {
+        const updatedPayload = { ...formData, id: formData.id || Date.now().toString() };
+        if (action === 'create') setServicesData([...servicesData, updatedPayload]);
+        else setServicesData(servicesData.map(sv => sv.id === formData.id ? updatedPayload : sv));
+        setIsModalOpen(false);
+      } else {
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      }
+    } catch (error) {
+      alert('ไม่สามารถบันทึกข้อมูลได้');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('คุณต้องการลบข้อมูลบริการนี้ใช่หรือไม่?')) return;
+    try {
+      const response = await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheet: 'Web', action: 'delete', data: { id: id } }),
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        setServicesData(servicesData.filter(sv => sv.id !== id));
+      }
+    } catch (error) {
+      alert('เกิดข้อผิดพลาดในการลบข้อมูล');
+    }
+  };
+
   const bentoGlass = "rounded-[2.5rem] bg-white/85 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-500 relative overflow-hidden";
+
+  if (isLoading) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-[#fdfcff]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        </div>
+    );
+  }
 
   return (
     <div className="relative font-sans text-slate-900 bg-[#fdfcff] min-h-screen pt-16 pb-32">
@@ -170,7 +250,7 @@ export default function StudentServices() {
           </div>
         </FadeInSection>
 
-        {/* ---------------- 📌 ช่องค้นหา และ Filter เว็บไซต์ (ย้ายขึ้นมาบนสุด) ---------------- */}
+        {/* ---------------- 📌 ช่องค้นหา และ Filter เว็บไซต์ ---------------- */}
         <FadeInSection delay="0.2s">
           <div className="text-center max-w-4xl mx-auto pb-10">
             <div className="max-w-xl mx-auto relative group mb-8">
@@ -187,16 +267,25 @@ export default function StudentServices() {
           </div>
         </FadeInSection>
 
-        {/* ---------------- 📌 1. เว็บไซต์ที่เกี่ยวข้อง ---------------- */}
+        {/* 📌 Admin Add Button */}
+        {isAdmin && (
+            <div className="flex justify-center mb-10">
+                <button onClick={() => handleOpenModal()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                    เพิ่มเว็บไซต์บริการใหม่
+                </button>
+            </div>
+        )}
+
+        {/* ---------------- 📌 1. เว็บไซต์ที่เกี่ยวข้อง (ดึงจาก Sheets) ---------------- */}
         <FadeInSection delay="0.3s">
           <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
             <SectionBanner text="เว็บไซต์บริการส่วนกลาง" variant="website" />
             
             <div className="space-y-12 mt-10">
-              {/* แสดงข้อความ Empty State ถ้าหาไม่เจอ */}
               {visibleGroups.every(group => getFilteredItems(group.id).length === 0) && (
                 <div className="py-12 text-center text-slate-500 font-medium bg-white/40 rounded-3xl border border-white/60">
-                  ไม่พบข้อมูลบริการที่คุณค้นหา กรุณาลองใช้คำค้นหาอื่น
+                  ไม่พบข้อมูลบริการที่คุณค้นหา
                 </div>
               )}
 
@@ -214,11 +303,22 @@ export default function StudentServices() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       <AnimatePresence>
-                        {services.map((item, idx) => (
-                          <motion.div layout key={idx} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} whileHover={{ y: -6, scale: 1.02 }} transition={{ duration: 0.25 }} className="relative rounded-2xl bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 overflow-hidden group flex flex-col p-5">
+                        {services.map((item) => (
+                          <motion.div layout key={item.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} whileHover={{ y: -6, scale: 1.02 }} transition={{ duration: 0.25 }} className="relative rounded-2xl bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 overflow-hidden group flex flex-col p-5">
+                            
+                            {/* Admin Controls */}
+                            {isAdmin && (
+                              <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => handleOpenModal(item)} className="p-1.5 bg-blue-500/90 text-white rounded-lg shadow-sm hover:bg-blue-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                                <button onClick={() => handleDelete(item.id)} className="p-1.5 bg-rose-500/90 text-white rounded-lg shadow-sm hover:bg-rose-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                              </div>
+                            )}
+
                             <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${item.color}`}></div>
                             <div className="flex justify-between items-center mb-4 pt-1"><span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">{item.short}</span></div>
-                            <div className="relative w-24 h-24 mx-auto mb-4 flex items-center justify-center p-3 rounded-2xl bg-slate-50 shadow-inner group-hover:scale-105 transition-transform duration-500"><img src={item.img} alt={item.name} className="w-full h-full object-contain mix-blend-multiply drop-shadow-xs" /></div>
+                            <div className="relative w-24 h-24 mx-auto mb-4 flex items-center justify-center p-3 rounded-2xl bg-slate-50 shadow-inner group-hover:scale-105 transition-transform duration-500">
+                                <img src={item.img} alt={item.name} className="w-full h-full object-contain mix-blend-multiply drop-shadow-xs" onError={(e)=>{e.target.onerror = null; e.target.src="https://via.placeholder.com/150"}} />
+                            </div>
                             <div className="text-center flex-1 flex flex-col justify-between">
                               <div><h4 className="text-sm font-black text-slate-800 mb-1.5 leading-snug group-hover:text-purple-700 transition-colors">{item.name}</h4><p className="text-[11px] font-medium text-slate-500 leading-relaxed line-clamp-2 mb-5">{item.desc}</p></div>
                               <a href={item.url} target="_blank" rel="noreferrer" className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r ${item.color} shadow-sm flex items-center justify-center gap-2 hover:shadow-md transition-all active:scale-95`}>เข้าสู่เว็บไซต์ <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg></a>
@@ -399,7 +499,7 @@ export default function StudentServices() {
                         <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-md text-[10px] font-bold text-slate-700">@KMUTNB by AIS / TRUE</span>
                       </div>
                       <p className="text-xs font-medium text-slate-600 mb-1">กรอก User / Password ของ ICIT Account</p>
-                      <p className="text-[10px] text-rose-500">* Windows 8+ และ Mac OS X เชื่อมต่อได้ทันทีโดยไม่ต้องตั้งค่าเพิ่ม</p>
+                      <p className="text-[10px] text-rose-500">Windows 8+ และ Mac OS X เชื่อมต่อได้ทันทีโดยไม่ต้องตั้งค่าเพิ่ม</p>
                     </div>
                     <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                       <div className="flex items-center gap-2 mb-2">
@@ -648,6 +748,69 @@ export default function StudentServices() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7"></path>
         </svg>
       </motion.button>
+
+      {/* ================= Admin Modal ================= */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <h2 className="text-2xl font-bold text-slate-800 mb-6 border-b pb-4">
+              {formData.id ? 'แก้ไขเว็บไซต์บริการ' : 'เพิ่มเว็บไซต์บริการใหม่'}
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">หมวดหมู่</label>
+                <select name="category" value={formData.category} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <option value="ส่วนกลางและระบบการศึกษา">ส่วนกลางและระบบการศึกษา</option>
+                  <option value="ทรัพยากร พื้นที่เรียนรู้ และกิจกรรม">ทรัพยากร พื้นที่เรียนรู้ และกิจกรรม</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">ชื่อระบบ/เว็บไซต์</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">ชื่อย่อ (Tag)</label>
+                    <input type="text" name="short" value={formData.short} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" />
+                  </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">URL เว็บไซต์</label>
+                <input type="text" name="url" value={formData.url} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">คำอธิบาย</label>
+                <textarea name="desc" value={formData.desc} onChange={handleChange} rows="3" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl"></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">สีของปุ่ม (Tailwind Classes)</label>
+                  <input type="text" name="color" value={formData.color} onChange={handleChange} placeholder="เช่น from-blue-500 to-cyan-500" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">URL โลโก้ (Image URL)</label>
+                  <input type="text" name="img" value={formData.img} onChange={handleChange} placeholder="https://..." className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" />
+                </div>
+              </div>
+
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
+              <button onClick={() => setIsModalOpen(false)} disabled={isSaving} className="px-6 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-colors">ยกเลิก</button>
+              <button onClick={handleSave} disabled={isSaving} className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-md transition-colors flex items-center gap-2">
+                {isSaving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
+                บันทึกข้อมูล
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
     </div>
   );
 }
