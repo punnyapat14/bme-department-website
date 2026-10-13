@@ -39,10 +39,10 @@ export default function Admission() {
         <div className="text-center max-w-4xl mx-auto pt-8 pb-12">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600">
-              สมัครเรียน (Admission)
+              สมัครเรียน
             </h1>
             <p className="font-medium text-slate-600 text-lg md:text-xl leading-relaxed mx-auto max-w-2xl">
-              ข้อมูลการรับสมัครนักศึกษาใหม่ โครงการรับตรง และระบบ TCAS เพื่อเข้าศึกษาต่อในสาขาวิชาวิศวกรรมชีวการแพทย์
+              ข้อมูลการรับสมัครนักศึกษาใหม่ โครงการรับตรง และระบบ TCAS เพื่อเข้าศึกษาต่อในสาขาวิชาวิศวกรรมชีวการแพทย์ มจพ.
             </p>
           </motion.div>
         </div>
@@ -90,64 +90,69 @@ export default function Admission() {
         {/* ---------------- 1.5 ข้อมูลรับสมัครเฉพาะสาขาวิชา BME ---------------- */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          className={`p-8 md:p-12 mb-16 ${bentoGlass}`}
+          className={`p-6 sm:p-8 md:p-12 mb-16 ${bentoGlass}`}
         >
           {/* 📌 ใช้ SectionBanner แทน Header */}
-          <div className="mb-10 w-full max-w-4xl mx-auto">
+          <div className="mb-8 w-full max-w-4xl mx-auto">
             <SectionBanner text="ข้อมูลรับสมัครสาขาวิชาวิศวกรรมชีวการแพทย์" variant="scholarship" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
             {/* 1. คุณสมบัติผู้สมัคร */}
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50/30 rounded-3xl p-6 shadow-sm border border-blue-100 flex flex-col hover:-translate-y-1 transition-transform">
-              <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center mb-4 shadow-md">
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50/30 rounded-3xl p-5 lg:p-6 shadow-sm border border-blue-100 flex flex-col hover:-translate-y-1 transition-transform h-full">
+              <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center mb-4 shadow-md shrink-0">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-3">คุณสมบัติผู้สมัคร</h3>
-              <ul className="space-y-2 text-sm text-slate-600 font-medium flex-1">
+              <h3 className="text-[17px] font-extrabold text-slate-800 mb-3">คุณสมบัติผู้สมัคร</h3>
+              <ul className="space-y-3 text-[13px] xl:text-[14px] text-slate-600 font-medium flex-1">
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">▪</span>
-                  สำเร็จการศึกษาระดับ ม.6 แผนการเรียน วิทย์-คณิต
+                  <span className="text-blue-500 mt-1 shrink-0">▪</span>
+                  <span className="leading-snug break-words">สำเร็จการศึกษาระดับ ม.6 แผนการเรียนวิทย์-คณิต</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">▪</span>
-                  หรือเทียบเท่า (ตามประกาศรับสมัครของมหาวิทยาลัย)
+                  <span className="text-blue-500 mt-1 shrink-0">▪</span>
+                  <span className="leading-snug break-words">หรือเทียบเท่า (ตามประกาศรับสมัครของมหาวิทยาลัย)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">▪</span>
-                  GPAX ขั้นต่ำตามที่ระบุในแต่ละรอบการรับสมัคร
+                  <span className="text-blue-500 mt-1 shrink-0">▪</span>
+                  <span className="leading-snug break-words">GPAX ขั้นต่ำตามที่ระบุในแต่ละรอบรับสมัคร</span>
                 </li>
               </ul>
             </div>
 
             {/* 2. รอบที่เปิดรับ (TCAS) */}
-            <div className="bg-gradient-to-br from-purple-50 to-fuchsia-50/30 rounded-3xl p-6 shadow-sm border border-purple-100 flex flex-col hover:-translate-y-1 transition-transform">
-              <div className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center mb-4 shadow-md">
+            <div className="bg-gradient-to-br from-purple-50 to-fuchsia-50/30 rounded-3xl p-5 lg:p-6 shadow-sm border border-purple-100 flex flex-col hover:-translate-y-1 transition-transform h-full">
+              <div className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center mb-4 shadow-md shrink-0">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-3">รอบที่เปิดรับ (TCAS)</h3>
-              <ul className="space-y-2 text-sm text-slate-600 font-medium flex-1">
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-purple-600">รอบ 1:</span> Portfolio (แฟ้มสะสมผลงาน)
+              <h3 className="text-[17px] font-extrabold text-slate-800 mb-3">รอบที่เปิดรับ (TCAS)</h3>
+              <ul className="space-y-3 text-[13px] xl:text-[14px] text-slate-600 font-medium flex-1">
+                <li className="flex items-start gap-2 leading-snug">
+                  <span className="font-extrabold text-purple-700 shrink-0">รอบ 1:</span>
+                  <span className="break-words">Portfolio (แฟ้มสะสมผลงาน)</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-purple-600">รอบ 2:</span> Quota (โควตาพื้นที่/โรงเรียนเครือข่าย)
+                <li className="flex items-start gap-2 leading-snug">
+                  <span className="font-extrabold text-purple-700 shrink-0">รอบ 2:</span>
+                  <span className="break-words">Quota (โควตาพื้นที่ / โรงเรียนเครือข่าย)</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-purple-600">รอบ 3:</span> Admission (คะแนน TGAT/TPAT/A-Level)
+                <li className="flex items-start gap-2 leading-snug">
+                  <span className="font-extrabold text-purple-700 shrink-0">รอบ 3:</span>
+                  <span className="break-words">Admission (คะแนน TGAT/TPAT/A-Level)</span>
                 </li>
               </ul>
             </div>
 
             {/* 3. ค่าธรรมเนียมการศึกษา */}
-            <div className="bg-gradient-to-br from-emerald-50 to-teal-50/30 rounded-3xl p-6 shadow-sm border border-emerald-100 flex flex-col hover:-translate-y-1 transition-transform">
-              <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-4 shadow-md">
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50/30 rounded-3xl p-5 lg:p-6 shadow-sm border border-emerald-100 flex flex-col hover:-translate-y-1 transition-transform h-full">
+              <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-4 shadow-md shrink-0">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-3">ค่าธรรมเนียมการศึกษา</h3>
-              <div className="flex-1 flex flex-col justify-center mb-4">
-                <p className="text-3xl font-black text-emerald-600 tracking-tight">28,000<span className="text-base font-bold text-slate-500 ml-1">บาท</span></p>
-                <p className="text-xs text-slate-500 mt-1 font-medium">ต่อภาคการศึกษา (โดยประมาณ)</p>
+              <h3 className="text-[17px] font-extrabold text-slate-800 mb-3">ค่าธรรมเนียมการศึกษา</h3>
+              <div className="flex-1 flex flex-col justify-center">
+                <p className="text-3xl lg:text-4xl font-black text-emerald-600 tracking-tight flex items-baseline gap-1">
+                  25,000 <span className="text-sm font-extrabold text-slate-500">บาท</span>
+                </p>
+                <p className="text-[13px] text-slate-500 mt-2 font-medium break-words">ต่อภาคการศึกษา (โดยประมาณ)</p>
               </div>
             </div>
           </div>

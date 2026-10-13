@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ==========================================
 // 📌 Component: พื้นหลังแสงออโรร่า
@@ -76,17 +76,73 @@ export const SectionBanner = ({ text }) => {
       {/* ✨ 3. เคลือบกระจกมันวาว (Glossy Reflection) */}
       <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/60 to-transparent rounded-t-[1.25rem] md:rounded-t-[2rem] pointer-events-none" />
 
-      {/* 📝 4. ข้อความตรงกลาง (ปรับขนาดฟอนต์ตามหน้าจอ และไม่ตัดคำทิ้งบนมือถือ) */}
+      {/* 📝 4. ข้อความตรงกลาง */}
       <h2 className="relative z-10 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight text-[#2d1b69] drop-shadow-[0_2px_4px_rgba(255,255,255,0.7)] px-2 sm:px-6 text-center leading-snug break-words">
         {text}
       </h2>
       
-      {/* 💫 5. แสงสะท้อนวิ่งผ่านตลอดเวลา (Continuous Light Sweep) */}
+      {/* 💫 5. แสงสะท้อนวิ่งผ่านตลอดเวลา */}
       <motion.div
         animate={{ left: ["-100%", "200%", "200%"] }}
         transition={{ duration: 3.5, ease: "easeInOut", repeat: Infinity, repeatDelay: 0.5 }}
         className="absolute top-0 w-[40%] h-full bg-gradient-to-r from-transparent via-white/70 to-transparent skew-x-12 z-20 pointer-events-none"
       />
     </motion.div>
+  );
+};
+
+// ==========================================
+// 📌 Component: ปุ่มเลื่อนกลับไปด้านบนสุด (Scroll to Top)
+// ==========================================
+export const ScrollToTopButton = () => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  // ตรวจจับระยะการเลื่อนหน้าจอ
+  useEffect(() => {
+    const toggleVisibility = () => {
+      // ถ้าเลื่อนลงมาเกิน 300px ให้แสดงปุ่ม
+      if (window.scrollY > 300) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+    };
+
+    window.addEventListener("scroll", toggleVisibility);
+    return () => window.removeEventListener("scroll", toggleVisibility);
+  }, []);
+
+  // ฟังก์ชันเลื่อนกลับขึ้นบนสุด
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.5, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.5, y: 20 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-[100] w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-900/90 hover:bg-purple-700 text-white shadow-xl shadow-purple-900/20 flex items-center justify-center backdrop-blur-md border border-white/20 transition-colors cursor-pointer group"
+          aria-label="Scroll to top"
+        >
+          <svg 
+            className="w-5 h-5 md:w-6 md:h-6 group-hover:-translate-y-1 transition-transform duration-300" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+          </svg>
+        </motion.button>
+      )}
+    </AnimatePresence>
   );
 };

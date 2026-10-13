@@ -1,187 +1,50 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-
-// 📌 ดึง Component แสงออโรร่าและแบนเนอร์มาจากไฟล์ส่วนกลาง
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuroraBackground, SectionBanner } from '../../components/ThemeElements';
+import { useAuth } from '../../contexts/AuthContext';
 
-// 📌 นำเข้ารูปโลโก้เพื่อทำเป็นโลโก้บนการ์ด
+// 📌 นำเข้า Supabase
+import { createClient } from '@supabase/supabase-js';
+
+// 📌 รูปโลโก้เริ่มต้น (Fallback)
 import imgKmutnbSeal from '../../assets/Symbol/KMUTNB_Logo.png';
 import imgAppliedScience from '../../assets/Symbol/AppliedScience_Logo.png';
 
-// ==========================================
-// 📌 ข้อมูลบทเพลงทั้งหมด (แยกประเภท มหาวิทยาลัย / คณะ)
-// ==========================================
-const SONGS = [
-  // --- กลุ่มเพลงมหาวิทยาลัย ---
-  {
-    title: 'เพลงประจำสถาบันเทคโนโลยีพระจอมเกล้า',
-    category: 'university',
-    icon: imgKmutnbSeal,
-    lyrics: `สถาบันเทคโนโลยีพระจอมเกล้าฯ
-ถิ่นของเราเลิศหรูพริ้งเพรา มิเคยอับเฉา
-ถิ่นเราวิไล เด่นเหนือใคร แม้นามนั้นไซร้ พระราชทาน
-เป็นมิ่งขวัญ ให้เราสำคัญ สถาบันเด่นดี
-เราสายเลือดเดียวกัน เหมือนน้องพี่กันในทุกที่
-เราภูมิใจแห่งเลือดเทคโนโลยี ที่เราน้องพี่พากเพียร
-มั่นหมายเรียน พากเพียรทั่วหน้าหมายพาก้าวไป
-ไม่ท้อใจอนาคตไกล ชีวิตสดใส ภูมิใจชื่นชม
-สถาบันเทคโนโลยีพระจอมเกล้าฯ
-สถาบันเลิศล้ำของเรานั้นเรืองรุ่งเนาว์ เด่นในสังคม
-สถาบันที่ชนชื่นชมนิยมทั่วกัน
-ชื่อขจรเกียรติก้องสำคัญ มั่นคงศักดิ์ศรี
-เราสาบานไว้มั่น รักประเทศนั้นเท่าชีวี
-ดวงวิญญาณแห่งเราเทคโนโลยี จงรักภักดีราชันย์
-ศาสน์สำคัญ พุทธธรรมจำมั่นไว้ในดวงใจ
-ศักดิ์ศรีนามแห่งดวงฤทัย สมนามเกริกไกร พระจอมเกล้าเอย`
-  },
-  {
-    title: 'เพลงลูกพระจอม',
-    category: 'university',
-    icon: imgKmutnbSeal,
-    lyrics: `นามพระจอมเกริกฟ้า
-มิ่งมหามงกุฎดังตะวันส่องแสงตระการ
-แดนสยามรุ่งเรืองไพศาล
-ด้วยพระปรีชาญาณเอกองค์
-จอมเกล้าจอมกษัตริย์ไทย
-หยาดเย็นน้ำพระทัยดัง
-หยาดฝนจากฟ้าโปรยลง
-ทรงอุทิศพระองค์สร้างไทยให้ยืนยง
-ข้าขอน้อมบังคมบัวบาท
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const GOOGLE_SHEET_API_URL = import.meta.env.VITE_DEPARTMENT_API_URL;
 
-* พระบิดาแห่งวิทยาศาสตร์ของไทย
-ธ บำรุงศาสตร์ศิลป์ค้ำจุนด้วยแสงธรรม
-พระเกียรติลือนาม สยามสง่าล้ำ
-จักจดจำ ไม่รู้เลือน
+const EMPTY_FORM = { id: '', category: 'university', title: '', detail1: '', detail2: '' }; 
+// detail1 = เนื้อเพลง, detail2 = ลิงก์รูปภาพไอคอน (ถ้ามี)
 
-** ลูกพระจอมฯ พร้อมใจถวายสัตย์
-ปฏิญาณ ด้วยมนัส
-ธำรงแสงแห่งความดี
-ลูกพระจอมฯ เทิดเกียรติภูมิศักดิ์ศรี
-สรรสร้างด้วยมือเรานี้
-ให้ไทยก้าวไกลทวี เลือดเนื้อเรานี้
-ลูกพระจอมฯ
-(ซ้ำ * / ** / **)`
-  },
-  {
-    title: 'เพลงเทคไทย-เยอรมัน สังสรรค์',
-    category: 'university',
-    icon: imgKmutnbSeal,
-    lyrics: `(*) ผองศิษย์เทคนิค รื่นระริกสราญ
-ยิ้มเบิกบาน หวานอารมณ์
-พบแต่มวลมิตร ชื่นชีวิตน่าชม
-ชื่นชีวิตน่าชม ล้วนรื่นรมย์
-ล้วนรื่นรมย์ สมอุรา
-ไทยเยอรมันชื่อนี้ พร้อมไมตรีเลิศดีหนักหนา
-เพราะศรัทธา รักค่าสัมพันธ์
-พวกเราต่างไว้ชื่อลือชา แหล่งศึกษาร่วมกัน
-ทุกเมื่อวัน ฝันเฟื่องไกล
-
-( ซ้ำ * )
-
-(**) ไทยเยอรมันชื่อหอม เหมือนพะยอมไม่ว่าทางไหน
-หอมจิตใจ ปองใฝ่วิชา
-สถาบันเทคนิคเรานี้ ชื่อเป็นศรีศรัทธา
-มะสิมา ไว้ชื่อเรา
-
-( ซ้ำ * และ ** )`
-  },
-  {
-    title: 'เพลงแสดดำ',
-    category: 'university',
-    icon: imgKmutnbSeal,
-    lyrics: `* แสดดำเรืองรองผ่องสง่า
-ชาวประชาร่วมรักสมัครสมาน
-เด่นและหรูในหมู่วิทยาการ
-ถิ่นตระการนามกระเดื่องเลื่องลือไกล
-แสดเรารักเราชอบไม่มีเหมือน
-ดำประเทืองช่วยกระเตื้องงามวิไล
-สะบัดพริ้วริ้วระรื่นแสนชื่นใจ
-รักกันไว้เราก็เลือดสีสดดำ
-(ซ้ำ *)`
-  },
-  {
-    title: 'เพลงบางซ่อน',
-    category: 'university',
-    icon: imgKmutnbSeal,
-    lyrics: `บางซ่อนบางนี้ไซร้ มิได้ซ่อนบางพราง
-เพราะนามบาง ยินทุกทางทั่วไป
-เทคนิคไทยเยอรมัน นี่นั่นบันลือไกล
-เร้นปานใด ไยเหมือนนามบางซ่อน
-อาศัยถิ่นนี้ อันสมค่าขจร
-มาขอวอน บางซ่อนมีวิชา
-บางซ่อนบางสอนวิทย์ สมจิตดังปองมา
-สมวิญญาณ์ มีวิชาทางช่าง
-บางซ่อนบางนี้ไซร้ มิได้ซ่อนบางพราง
-เพราะนามบาง ยินทุกทางทั่วไป
-บางซ่อนบางนี้นั้น ล้วนมั่นความภูมิใจ
-วิชาใด เรารับไปเสริมสร้าง
-เรานี้นี่หรือ มีฝีมือนามสมชื่อตามบาง
-เราสมบาง สมช่างไทยเยอรมัน
-บางซ่อนบางสอนรัก รักปักทรวงนิรันดร์
-ทุกชีวัน รวมสัมพันธ์บางซ่อน`
-  },
-  
-  // --- กลุ่มเพลงคณะ ---
-  {
-    title: 'เพลงมาร์ชคณะวิทยาศาสตร์ประยุกต์',
-    category: 'faculty',
-    icon: imgAppliedScience,
-    lyrics: `เราคือคณะวิทยาศาสตร์ประยุกต์
-มุ่งเชิงรุก เทคโนโลยีทันสมัย
-สร้างสรรค์ส่งเสริมพัฒนาก้าวไกล
-เพื่อประเทศได้เจริญรุ่งเรือง
-อะตอม คือสัญลักษณ์รวมศรัทธา
-ก้าวล้ำนำหน้าเป็นสื่อนำพาชาติฟูเฟื่อง
-มาอยู่รวมกันด้วยความผูกพันสีเหลือง
-ส่องแสงประเทือง ร้องดวงใจให้เราฉลาด
-สถาบันเทคโนโลยีพระจอมเกล้า
-พระจอมเหนือ มีคณะเราเปรื่องปราชญ์
-ค้นคว้า ทดลอง วิจัย วิทยาศาสตร์
-พัฒนาชาติก้าวล้ำนำไทย
-เราคือพลังสร้างสรรค์ที่แข็งแกร่ง
-ต้นประดู่แดง สื่อนำแสงสีสดใส
-* วิทยาศาสตร์ประยุกต์อันกว้างไกล
-ร้อยดวงใจทันสมัยนำไทยเจริญ
-(ซ้ำ *)`
-  },
-  {
-    title: 'เพลงวิทยารวมใจ',
-    category: 'faculty',
-    icon: imgAppliedScience,
-    lyrics: `ลูกพระจอมเกล้าไม่มีเรา มีเขาหรือใคร
-ใต้ร่มไม้สัญลักษณ์คือ “ประดู่แดง”
-ดั่ง “อะตอม” เป็นสื่อนำความร้อนแรง
-สู่ลูกพระจอมเกล้าแห่งสถาบัน
-โลกประยุกต์ ศาสตร์แสง แห่งวิทยา
-ร่วมพัฒนา ร่วมแรง ร่วมใจผูกพัน
-สัจธรรม คงอยู่ประจำ นิรันดร์
-จุดความฝันให้เรา ร่วมประสานใจ
-(ญ) ต่างดื่มกันมา สมอุรา เมื่อเราเจอกัน
-ใต้ฟ้าสถาบัน รักผูกพันกับใจเธอไหม
-(ช) ร่วมตั้งความหวัง ปณิธานมุ่งหน้าต่อไป
-มองอนาคตไกล สร้างโลกสดใสใต้ชื่อสถาบัน`
+// 🛠️ Helper: จัดการรูปภาพและแปลงลิงก์
+const getIconImage = (url, category) => {
+  if (url && url.trim() !== "") {
+    let parsedUrl = url.trim();
+    if (parsedUrl.includes('drive.google.com/file/d/')) {
+      const match = parsedUrl.match(/\/d\/(.*?)\//);
+      if (match && match[1]) parsedUrl = `https://drive.google.com/uc?id=${match[1]}`;
+    }
+    return parsedUrl;
   }
-];
+  // ถ้าไม่มีลิงก์ ให้ใช้รูป Default ตามหมวดหมู่
+  if (category === 'faculty') return imgAppliedScience;
+  return imgKmutnbSeal; // ค่าเริ่มต้นคือโลโก้มหาวิทยาลัย
+};
 
 // ==========================================
-// 📌 Component: กราฟิกตกแต่งภายในการ์ด (ลายก้อนเมฆและท้องฟ้า)
+// 📌 Components ตกแต่ง
 // ==========================================
 const CardCloudDecoration = () => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 rounded-[2rem]">
-    {/* พื้นหลังไล่สีโทนฟ้า-ครีม */}
     <div className="absolute inset-0 bg-gradient-to-b from-[#e0f2fe] via-[#f0f9ff] to-[#fdfcf6] opacity-90"></div>
-    {/* ก้อนเมฆบนซ้าย */}
     <div className="absolute -top-10 -left-10 w-48 h-48 bg-white/80 blur-[25px] rounded-full"></div>
-    {/* ก้อนเมฆบนขวา */}
     <div className="absolute top-12 -right-16 w-56 h-56 bg-white/70 blur-[35px] rounded-full"></div>
-    {/* ก้อนเมฆด้านล่างสุด */}
     <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-[120%] h-40 bg-white/90 blur-[20px] rounded-t-[100%]"></div>
   </div>
 );
 
-// ==========================================
-// 📌 Component: ไอคอนฝูงนกบิน
-// ==========================================
 const BirdFlock = () => (
   <svg className="absolute top-8 right-8 w-14 h-14 text-amber-700/40 opacity-80 z-10" viewBox="0 0 100 100" fill="currentColor">
     <path d="M70.5,30.5 C68,28 65,27.5 62.5,29 C65,30.5 66.5,33 66.5,35.5 C66.5,33 68,30.5 70.5,30.5 Z" />
@@ -190,9 +53,6 @@ const BirdFlock = () => (
   </svg>
 );
 
-// ==========================================
-// 📌 Component: ระบบ Fade-in เวลาเลื่อนจอ
-// ==========================================
 const FadeInSection = ({ children, delay = "0s", className = "" }) => {
   const [isVisible, setVisible] = useState(false);
   const domRef = useRef();
@@ -215,66 +75,171 @@ const FadeInSection = ({ children, delay = "0s", className = "" }) => {
 };
 
 // ==========================================
-// 📌 Component: การ์ดเนื้อเพลงที่มีลูกเล่นกราฟิก
+// 📌 Component: การ์ดเนื้อเพลง
 // ==========================================
-const SongCard = ({ title, category, lyrics, icon }) => (
-  <motion.div
-    whileHover={{ y: -6, scale: 1.01 }}
-    transition={{ duration: 0.3 }}
-    className="break-inside-avoid mb-8 rounded-[2rem] bg-white border border-white/60 shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_20px_40px_rgba(14,165,233,0.15)] relative overflow-hidden group"
-  >
-    {/* กราฟิกเมฆ ท้องฟ้า และฝูงนก ภายในการ์ด */}
-    <CardCloudDecoration />
-    <BirdFlock />
-    
-    <div className="p-8 relative z-20">
-      <div className="flex flex-col items-center pb-6 mb-6 relative">
-        {/* ขีดเส้นใต้ตกแต่งหัวข้อ */}
-        <div className="absolute bottom-0 w-32 h-[1px] bg-gradient-to-r from-transparent via-sky-300 to-transparent"></div>
-        
-        {/* โลโก้ด้านบน */}
-        <div className="w-16 h-16 rounded-full bg-white shadow-md border border-slate-100 p-1 mb-4 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-500">
-          <img src={icon} alt="Logo" className="w-full h-full object-contain" />
+const SongCard = ({ item, canManage, onEdit, onDelete }) => {
+  const iconImg = getIconImage(item.detail2, item.category);
+  const lyrics = item.detail1 || '';
+
+  return (
+    <motion.div
+      whileHover={{ y: -6, scale: 1.01 }}
+      transition={{ duration: 0.3 }}
+      className="break-inside-avoid mb-8 rounded-[2rem] bg-white border border-white/60 shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_20px_40px_rgba(14,165,233,0.15)] relative overflow-hidden group"
+    >
+      <CardCloudDecoration />
+      <BirdFlock />
+      
+      <div className="p-8 relative z-20">
+        {canManage && (
+          <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-30 bg-white/50 backdrop-blur-sm p-2 rounded-bl-2xl">
+            <button onClick={() => onEdit(item)} className="text-[10px] text-purple-600 font-bold bg-white px-2 py-1 rounded shadow-sm">แก้ไข</button>
+            <button onClick={() => onDelete(item)} className="text-[10px] text-rose-600 font-bold bg-white px-2 py-1 rounded shadow-sm">ลบ</button>
+          </div>
+        )}
+
+        <div className="flex flex-col items-center pb-6 mb-6 relative">
+          <div className="absolute bottom-0 w-32 h-[1px] bg-gradient-to-r from-transparent via-sky-300 to-transparent"></div>
+          <div className="w-16 h-16 rounded-full bg-white shadow-md border border-slate-100 p-1 mb-4 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-500">
+            <img src={iconImg} alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <div className="flex items-center gap-3 w-full justify-center">
+            <div className="h-1 w-4 bg-slate-800 rounded-full opacity-60"></div>
+            <h3 className="text-xl md:text-2xl font-black text-slate-800 text-center tracking-tight drop-shadow-sm">{item.title}</h3>
+            <div className="h-1 w-4 bg-slate-800 rounded-full opacity-60"></div>
+          </div>
         </div>
-        
-        {/* ชื่อเพลง */}
-        <div className="flex items-center gap-3 w-full justify-center">
-          <div className="h-1 w-4 bg-slate-800 rounded-full opacity-60"></div>
-          <h3 className="text-xl md:text-2xl font-black text-slate-800 text-center tracking-tight drop-shadow-sm">{title}</h3>
-          <div className="h-1 w-4 bg-slate-800 rounded-full opacity-60"></div>
+
+        <div className="text-center space-y-2">
+          {lyrics.split('\n').map((line, idx) => {
+            const isHighlight = line.trim().startsWith('(') || line.trim().startsWith('*') || line.trim().startsWith('-');
+            return (
+              <p key={idx} className={`text-[15px] leading-relaxed transition-colors ${line.trim() === '' ? 'h-4' : ''} ${isHighlight ? 'text-blue-800 font-bold italic' : 'text-slate-700 font-medium'}`}>
+                {line}
+              </p>
+            );
+          })}
         </div>
       </div>
+    </motion.div>
+  );
+};
 
-      <div className="text-center space-y-2">
-        {lyrics.split('\n').map((line, idx) => {
-          const isHighlight = line.startsWith('(') || line.startsWith('*');
-          return (
-            <p key={idx} className={`text-[15px] leading-relaxed transition-colors ${line === '' ? 'h-4' : ''} ${isHighlight ? 'text-blue-800 font-bold italic' : 'text-slate-700 font-medium'}`}>
-              {line}
-            </p>
-          );
-        })}
-      </div>
-    </div>
-  </motion.div>
-);
-
+// ==========================================
+// 📌 Main Component
+// ==========================================
 export default function Songs() {
+  const { user } = useAuth();
+  
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [showModal, setShowModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const canManage = Boolean(
+    user && (['admin', 'faculty', 'teacher', 'staff'].includes(String(user.role || '').toLowerCase()) || user.isAdmin === true || String(user.email || '').endsWith('@sci.kmutnb.ac.th'))
+  );
+
   useEffect(() => {
     window.scrollTo(0, 0);
+    fetchData();
   }, []);
 
-  const universitySongs = SONGS.filter(s => s.category === 'university');
-  const facultySongs = SONGS.filter(s => s.category === 'faculty');
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const sep = GOOGLE_SHEET_API_URL.includes('?') ? '&' : '?';
+      const response = await fetch(`${GOOGLE_SHEET_API_URL}${sep}sheet=Songs`);
+      if (!response.ok) throw new Error('Network error');
+      const result = await response.json();
+      setItems(Array.isArray(result) ? result : (result.data || []));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openModal = (category, item = null) => {
+    if (item) {
+      setEditingItem(item);
+      setFormData(item);
+    } else {
+      setEditingItem(null);
+      setFormData({ ...EMPTY_FORM, category });
+    }
+    setUploadFile(null);
+    setShowModal(true);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!canManage) return;
+    try {
+      setSubmitting(true);
+      let finalImageUrl = formData.detail2;
+
+      // 🌟 อัปโหลดรูปลง Supabase (ถ้ามีการเลือกไฟล์ใหม่)
+      if (uploadFile) {
+        const fileExt = uploadFile.name.split('.').pop();
+        const fileName = `song_icon_${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
+        const filePath = `songs/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage.from('bme-assets').upload(filePath, uploadFile);
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage.from('bme-assets').getPublicUrl(filePath);
+        finalImageUrl = publicUrlData.publicUrl;
+      }
+
+      // 🌟 บันทึกข้อมูลลง Google Sheets
+      const action = editingItem ? 'update' : 'create';
+      await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          sheet: 'Songs',
+          action,
+          data: { ...formData, detail2: finalImageUrl, id: editingItem ? editingItem.id : Date.now().toString() }
+        })
+      });
+
+      setShowModal(false);
+      setUploadFile(null);
+      await fetchData();
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (item) => {
+    if (!canManage || !window.confirm(`ยืนยันการลบเพลง: ${item.title}?`)) return;
+    try {
+      await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ sheet: 'Songs', action: 'delete', id: item.id })
+      });
+      await fetchData();
+    } catch (err) {
+      alert('ไม่สามารถลบได้');
+    }
+  };
+
+  const universitySongs = items.filter(s => String(s.category || '').trim().toLowerCase() === 'university');
+  const facultySongs = items.filter(s => String(s.category || '').trim().toLowerCase() === 'faculty');
 
   return (
     <div className="relative font-sans text-slate-900 min-h-screen pt-16 pb-32">
-      {/* 📌 ใช้พื้นหลังตีมหลักของเว็บไซต์ */}
       <AuroraBackground />
-
       <div className="relative z-10 max-w-[1250px] mx-auto px-4 md:px-6 pt-2">
 
-        {/* ---------------- Header ---------------- */}
         <FadeInSection delay="0.1s">
           <div className="text-center max-w-4xl mx-auto pt-2 pb-12">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
@@ -286,40 +251,99 @@ export default function Songs() {
           </div>
         </FadeInSection>
 
-        {/* ---------------- 1. บทเพลงมหาวิทยาลัย ---------------- */}
-        <div className="rounded-[3rem] bg-white/40 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
-          <FadeInSection delay="0.2s">
-            {/* 📌 ปรับมาใช้ prop: text ตามโครงสร้างใหม่ของ SectionBanner */}
-            <div className="mb-10 max-w-4xl mx-auto w-full">
-              <SectionBanner text="บทเพลงมหาวิทยาลัย" variant="website" />
+        {loading ? <div className="text-center text-slate-500 py-20">กำลังโหลดข้อมูลเนื้อเพลง...</div> : (
+          <>
+            {/* บทเพลงมหาวิทยาลัย */}
+            <div className="rounded-[3rem] bg-white/40 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
+              <FadeInSection delay="0.2s">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-10 max-w-4xl mx-auto w-full">
+                  <div className="flex-1 w-full"><SectionBanner text="บทเพลงมหาวิทยาลัย" variant="website" /></div>
+                  {canManage && (
+                    <button onClick={() => openModal('university')} className="px-5 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold shadow hover:bg-sky-600 shrink-0">
+                      + เพิ่มเพลงมหาวิทยาลัย
+                    </button>
+                  )}
+                </div>
+                
+                {universitySongs.length > 0 ? (
+                  <div className="columns-1 lg:columns-2 gap-8 max-w-6xl mx-auto">
+                    {universitySongs.map(song => <SongCard key={song.id} item={song} canManage={canManage} onEdit={openModal} onDelete={handleDelete} />)}
+                  </div>
+                ) : <p className="text-center text-slate-500 py-10">ยังไม่มีข้อมูลเพลงในหมวดหมู่นี้</p>}
+              </FadeInSection>
             </div>
-            
-            {/* 📌 ใช้ columns ในการจัดหน้าแบบ Masonry เพื่อให้การ์ดต่อกันสวยงาม */}
-            <div className="columns-1 lg:columns-2 gap-8 max-w-6xl mx-auto">
-              {universitySongs.map((song, idx) => (
-                <SongCard key={idx} {...song} />
-              ))}
-            </div>
-          </FadeInSection>
-        </div>
 
-        {/* ---------------- 2. บทเพลงคณะวิทยาศาสตร์ประยุกต์ ---------------- */}
-        <div className="rounded-[3rem] bg-white/40 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
-          <FadeInSection delay="0.3s">
-            {/* 📌 ปรับมาใช้ prop: text ตามโครงสร้างใหม่ของ SectionBanner */}
-            <div className="mb-10 max-w-4xl mx-auto w-full">
-              <SectionBanner text="บทเพลงประจำคณะ" variant="calendar" />
+            {/* บทเพลงคณะ */}
+            <div className="rounded-[3rem] bg-white/40 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
+              <FadeInSection delay="0.3s">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-10 max-w-4xl mx-auto w-full">
+                  <div className="flex-1 w-full"><SectionBanner text="บทเพลงประจำคณะ" variant="calendar" /></div>
+                  {canManage && (
+                    <button onClick={() => openModal('faculty')} className="px-5 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold shadow hover:bg-sky-600 shrink-0">
+                      + เพิ่มเพลงคณะ
+                    </button>
+                  )}
+                </div>
+                
+                {facultySongs.length > 0 ? (
+                  <div className="columns-1 lg:columns-2 gap-8 max-w-6xl mx-auto">
+                    {facultySongs.map(song => <SongCard key={song.id} item={song} canManage={canManage} onEdit={openModal} onDelete={handleDelete} />)}
+                  </div>
+                ) : <p className="text-center text-slate-500 py-10">ยังไม่มีข้อมูลเพลงในหมวดหมู่นี้</p>}
+              </FadeInSection>
             </div>
-            
-            <div className="columns-1 lg:columns-2 gap-8 max-w-6xl mx-auto">
-              {facultySongs.map((song, idx) => (
-                <SongCard key={idx} {...song} />
-              ))}
-            </div>
-          </FadeInSection>
-        </div>
-
+          </>
+        )}
       </div>
+
+      {/* 🔒 Modal Form */}
+      <AnimatePresence>
+        {canManage && showModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            <motion.form onSubmit={handleSave} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100">
+              <h3 className="text-xl font-extrabold text-slate-900 mb-4 pb-3 border-b">
+                {editingItem ? 'แก้ไขข้อมูลบทเพลง' : 'เพิ่มบทเพลงใหม่'}
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold">หมวดหมู่</label>
+                  <select className="w-full mt-1 p-2 border rounded-xl" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                    <option value="university">บทเพลงมหาวิทยาลัย</option>
+                    <option value="faculty">บทเพลงประจำคณะ</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold">ชื่อเพลง</label>
+                  <input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="เช่น เพลงลูกพระจอม" />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold">เนื้อเพลง (กด Enter เพื่อขึ้นบรรทัดใหม่)</label>
+                  <textarea required rows="10" className="w-full mt-1 p-2 border rounded-xl text-sm" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} placeholder="วางเนื้อเพลงที่นี่..." />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold">อัปโหลดโลโก้เพลง (เว้นว่างไว้เพื่อใช้โลโก้มาตรฐานตามหมวดหมู่)</label>
+                  <input type="file" accept="image/*" className="w-full mt-1 p-2 border rounded-xl text-xs bg-slate-50 cursor-pointer" onChange={e => setUploadFile(e.target.files[0])} />
+                  {editingItem && formData.detail2 && !uploadFile && (
+                    <p className="text-[10px] text-green-600 mt-1">✓ มีรูปโลโก้เฉพาะอยู่แล้ว (ไม่ต้องเลือกไฟล์ถ้าไม่ต้องการเปลี่ยน)</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
+                <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100">ยกเลิก</button>
+                <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-sky-600 disabled:opacity-50">
+                  {submitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
+                </button>
+              </div>
+            </motion.form>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

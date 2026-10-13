@@ -1,40 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-
-// 📌 ดึง Component แสงออโรร่าและแบนเนอร์มาจากไฟล์ส่วนกลาง
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuroraBackground, SectionBanner } from '../../components/ThemeElements';
+import { useAuth } from '../../contexts/AuthContext';
 
-// 📌 รูปสัญลักษณ์ (ตรวจนามสกุลไฟล์ให้ตรงกับของจริงในโฟลเดอร์ src/assets/Symbol)
+import { createClient } from '@supabase/supabase-js';
+
+// 📌 รูปสัญลักษณ์ (สำหรับเป็น Fallback)
 import imgKmutnbSeal from '../../assets/Symbol/KMUTNB_Logo.png';
-import imgKmutnbIdentity from '../../assets/Symbol/logo kmutnb final1.png';
-import imgLogo67 from '../../assets/Symbol/logo67.png';
-import imgAppliedScience from '../../assets/Symbol/AppliedScience_Logo.png';
-import imgIMI from '../../assets/Symbol/IMI_Logo.png';
-import imgBmeLogo from '../../assets/Symbol/bme_Logo.png';
-import imgBmeMascot from '../../assets/Symbol/bme_mascot.png';
 
-// 📌 รูปภาพสำหรับตกแต่ง FactCard
-import imgPradoo from '../../assets/Symbol/pradoo.png'; // รูปต้นประดู่แดง
-import imgK4 from '../../assets/Symbol/k4.jpg';         // รูปพื้นหลังการ์ดวันสถาปนามหาวิทยาลัย
-import imgApplied from '../../assets/Symbol/Applied.jpg'; // รูปพื้นหลังการ์ดวันก่อตั้งคณะ
-import imgImi04 from '../../assets/Symbol/imi04.jpg';     // รูปพื้นหลังการ์ดปีก่อตั้งภาควิชา
-
-// ==========================================
-// 📌 สีประจำหน่วยงาน
-// ==========================================
-const COLORS = {
-  university: { name: 'สีแดงหมากสุก', hex: '#AC3520', rgb: '172, 53, 32', cmyk: '5%, 85%, 85%, 30%' },
-  faculty: { name: 'สีเหลือง', hex: '#F2A900', rgb: '242, 169, 0', cmyk: null }, 
-  department: { name: 'สีม่วง', hex: '#7B2FA0', rgb: '123, 47, 160', cmyk: null }, 
-  bme: { name: 'สีแดง', hex: '#D61F26', rgb: '214, 31, 38', cmyk: null }, 
-};
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const GOOGLE_SHEET_API_URL = import.meta.env.VITE_DEPARTMENT_API_URL;
 
 const bentoGlass = 'rounded-[2.5rem] bg-white/85 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-50 relative overflow-hidden';
+const EMPTY_FORM = { id: '', category: 'university', subCategory: 'symbol', title: '', subtitle: '', detail1: '', detail2: '', detail3: '', detail4: '' };
+
+// 🛠️ Helper: ฟังก์ชันแปลงลิงก์ Google Drive ให้อ่านเป็นรูปได้
+const parseImageUrl = (url, fallback = null) => {
+  if (!url || url.trim() === "") return fallback;
+  let parsedUrl = url.trim();
+  if (parsedUrl.includes('drive.google.com/file/d/')) {
+    const match = parsedUrl.match(/\/d\/(.*?)\//);
+    if (match && match[1]) {
+      parsedUrl = `https://drive.google.com/uc?id=${match[1]}`;
+    }
+  }
+  return parsedUrl;
+};
 
 // ==========================================
-// 📌 Component: การ์ดสัญลักษณ์ พร้อมปุ่มดาวน์โหลด
+// 📌 Component: การ์ดสัญลักษณ์ 
 // ==========================================
-const SymbolCard = ({ img, title, tag, desc, accent }) => {
+const SymbolCard = ({ item, canManage, onEdit, onDelete }) => {
+  const tag = item.subtitle;
+  const title = item.title;
+  const desc = item.detail1;
+  const accent = item.detail2 || '#7B2FA0';
+  
+  // ใช้ Helper แปลงลิงก์รูปภาพ
+  const img = parseImageUrl(item.detail3, imgKmutnbSeal);
+
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = img;
@@ -45,145 +51,272 @@ const SymbolCard = ({ img, title, tag, desc, accent }) => {
   };
 
   return (
-    <motion.div
-      whileHover={{ y: -6 }}
-      transition={{ duration: 0.25 }}
-      className="rounded-[2rem] bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col relative group h-full"
-    >
+    <motion.div whileHover={{ y: -6 }} transition={{ duration: 0.25 }} className="rounded-[2rem] bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col relative group h-full">
       <div className="h-1.5 w-full" style={{ backgroundColor: accent }}></div>
-      <div className="p-6 flex flex-col items-center text-center flex-1">
-        
+      <div className="p-6 flex flex-col items-center text-center flex-1 relative">
         <div className="relative w-full h-44 rounded-2xl bg-slate-50 shadow-inner flex items-center justify-center p-5 mb-5 overflow-hidden group/img">
           <img src={img} alt={title} className="max-w-full max-h-full object-contain group-hover/img:scale-105 transition-transform duration-500" />
-          
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
-            <button 
-              onClick={handleDownload}
-              className="flex items-center gap-2 bg-white text-slate-900 px-4 py-2.5 rounded-full font-bold text-xs shadow-[0_4px_15px_rgba(0,0,0,0.2)] hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all"
-            >
+            <button onClick={handleDownload} className="flex items-center gap-2 bg-white text-slate-900 px-4 py-2.5 rounded-full font-bold text-xs shadow-lg hover:scale-105 active:scale-95 transition-all">
               <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
               ดาวน์โหลดรูปภาพ
             </button>
           </div>
         </div>
-
         <span className="px-3 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold mb-3 truncate max-w-full">{tag}</span>
         <h3 className="text-lg font-black text-slate-800 mb-2 leading-snug">{title}</h3>
         <p className="text-[13px] text-slate-500 font-medium leading-relaxed">{desc}</p>
+
+        {canManage && (
+          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-10">
+            <button onClick={() => onEdit(item)} className="text-[10px] text-purple-600 font-bold bg-white/90 px-2 py-1 rounded shadow-sm border border-purple-100">แก้ไข</button>
+            <button onClick={() => onDelete(item)} className="text-[10px] text-rose-600 font-bold bg-white/90 px-2 py-1 rounded shadow-sm border border-rose-100">ลบ</button>
+          </div>
+        )}
       </div>
     </motion.div>
   );
 };
 
 // ==========================================
-// 📌 Component: ตัวอย่างสี + ปุ่มคัดลอกรหัสสี
+// 📌 Component: ตัวอย่างสี
 // ==========================================
-const ColorSwatch = ({ label, color }) => {
+const ColorSwatch = ({ item, canManage, onEdit, onDelete }) => {
   const [copied, setCopied] = useState(false);
+  const label = item.title;
+  const name = item.detail1;
+  const hex = item.detail2 || '#000000';
+  const rgb = item.detail3;
+  const cmyk = item.detail4;
 
   const copyHex = async () => {
     try {
-      await navigator.clipboard.writeText(color.hex);
+      await navigator.clipboard.writeText(hex);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
-    } catch {
-      window.prompt('คัดลอกรหัสสี', color.hex);
-    }
+    } catch { window.prompt('คัดลอกรหัสสี', hex); }
   };
 
   return (
-    <div className="rounded-[2rem] bg-white border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full">
-      <div className="h-28 flex items-end p-4 relative overflow-hidden" style={{ backgroundColor: color.hex }}>
+    <div className="rounded-[2rem] bg-white border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full relative group">
+      <div className="h-28 flex items-end p-4 relative overflow-hidden" style={{ backgroundColor: hex }}>
         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
         <span className="relative z-10 px-3 py-1 rounded-full bg-white/90 text-[11px] font-black text-slate-800 shadow-sm truncate">{label}</span>
       </div>
       <div className="p-5 flex flex-col flex-1">
-        <p className="text-base font-black text-slate-800 mb-3">{color.name}</p>
+        <p className="text-base font-black text-slate-800 mb-3">{name}</p>
         <dl className="space-y-1.5 text-xs font-medium text-slate-600 mb-4 flex-1">
-          <div className="flex justify-between"><dt className="text-slate-400">HEX</dt><dd className="font-bold">{color.hex}</dd></div>
-          <div className="flex justify-between"><dt className="text-slate-400">RGB</dt><dd className="font-bold">{color.rgb}</dd></div>
-          {color.cmyk && <div className="flex justify-between"><dt className="text-slate-400">CMYK</dt><dd className="font-bold">{color.cmyk}</dd></div>}
+          <div className="flex justify-between"><dt className="text-slate-400">HEX</dt><dd className="font-bold">{hex}</dd></div>
+          <div className="flex justify-between"><dt className="text-slate-400">RGB</dt><dd className="font-bold">{rgb}</dd></div>
+          {cmyk && <div className="flex justify-between"><dt className="text-slate-400">CMYK</dt><dd className="font-bold">{cmyk}</dd></div>}
         </dl>
-        <button
-          onClick={copyHex}
-          className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-slate-800 shadow-sm hover:bg-slate-900 hover:-translate-y-0.5 transition-all mt-auto"
-        >
+        <button onClick={copyHex} className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-slate-800 shadow-sm hover:bg-slate-900 transition-all mt-auto">
           {copied ? 'คัดลอกสำเร็จแล้ว!' : 'คัดลอกรหัสสี HEX'}
         </button>
       </div>
+
+      {canManage && (
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-10">
+          <button onClick={() => onEdit(item)} className="text-[10px] text-purple-600 font-bold bg-white/90 px-2 py-1 rounded shadow-sm">แก้ไข</button>
+          <button onClick={() => onDelete(item)} className="text-[10px] text-rose-600 font-bold bg-white/90 px-2 py-1 rounded shadow-sm">ลบ</button>
+        </div>
+      )}
     </div>
   );
 };
 
 // ==========================================
-// 📌 Component: กล่องข้อมูลสั้นแบบมีลูกเล่น (FactCard) 
-// 📌 (อัปเดตขยายขนาดรูปภาพไอคอนให้ใหญ่ขึ้น)
+// 📌 Component: กล่องข้อมูลสั้น (FactCard)
 // ==========================================
-const FactCard = ({ icon, bgImage, label, value, tone }) => {
-  // ตรวจสอบว่า icon เป็น string ที่ลิงก์ไปรูปภาพ หรือเป็นตัวอักษร/อิโมจิ
-  const isImageIcon = typeof icon === 'string' && (icon.includes('/') || icon.includes('.'));
+const FactCard = ({ item, canManage, onEdit, onDelete }) => {
+  const label = item.title;
+  const value = item.subtitle;
+  
+  // แปลงลิงก์ไอคอน และ ภาพพื้นหลัง
+  let rawIcon = item.detail1 || '📌';
+  const icon = rawIcon.includes('http') ? parseImageUrl(rawIcon) : rawIcon;
+  const bgImage = parseImageUrl(item.detail2); // คอลัมน์ detail2 คือภาพพื้นหลัง
+  const tone = item.detail3 || 'border-slate-100';
+
+  const isImageIcon = typeof icon === 'string' && (icon.includes('/') || icon.includes('.') || icon.startsWith('http'));
 
   return (
-    <motion.div 
-      whileHover={{ y: -5, scale: 1.02 }}
-      transition={{ duration: 0.3 }}
-      className={`relative overflow-hidden rounded-[2rem] border border-white/60 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] bg-gradient-to-br ${tone} group flex flex-col h-full`}
-    >
-      {/* 🌟 ถ้ามี bgImage จะแสดงเป็นภาพพื้นหลัง */}
+    <motion.div whileHover={{ y: -5, scale: 1.02 }} className={`relative overflow-hidden rounded-[2rem] border border-white/60 p-6 shadow-sm bg-gradient-to-br ${tone} group flex flex-col h-full`}>
       {bgImage && (
         <>
           <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${bgImage})` }}></div>
-          {/* Overlay ทำให้ภาพพื้นหลังจางลงเพื่อให้ข้อความอ่านง่าย */}
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] group-hover:bg-black/50 transition-colors duration-300"></div>
         </>
       )}
 
-      {/* Watermark Icon แบบโปร่งแสงด้านหลัง (กรณีไม่มี bgImage) */}
       {!bgImage && !isImageIcon && (
-        <div className="absolute -right-4 -bottom-6 text-8xl opacity-10 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500 pointer-events-none select-none">
+        <div className="absolute -right-4 -bottom-6 text-8xl opacity-10 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500 pointer-events-none">
           {icon}
         </div>
       )}
       
       <div className="relative z-10 flex flex-col h-full">
-        {/* 📌 ไอคอน หรือ รูปภาพ (ปรับขนาดถ้าเป็นรูปภาพให้ใหญ่ขึ้นเป็น w-24 h-24) */}
         <div className={`${isImageIcon ? 'w-24 h-24 rounded-full' : 'w-14 h-14 rounded-[1rem]'} shrink-0 bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center text-3xl mb-5 group-hover:-translate-y-1 transition-transform duration-300 overflow-hidden border border-white/50`}>
-          {isImageIcon ? (
-            <img src={icon} alt={label} className="w-full h-full object-cover" />
-          ) : (
-            icon
-          )}
+          {isImageIcon ? <img src={icon} alt={label} className="w-full h-full object-cover" /> : icon}
         </div>
-
         <div className="flex-1 flex flex-col justify-end">
-          {/* ปรับสีตัวอักษรให้เป็นสีขาว (สว่าง) เมื่อใช้ bgImage ทับ เพื่อให้อ่านออก */}
-          <p className={`text-[12px] font-bold mb-1.5 uppercase tracking-wide truncate ${bgImage ? 'text-white/80' : 'text-slate-500'}`}>
-            {label}
-          </p>
-          <p className={`text-xl lg:text-2xl font-black tracking-tight leading-tight drop-shadow-sm ${bgImage ? 'text-white' : 'text-slate-800'}`}>
-            {value}
-          </p>
+          <p className={`text-[12px] font-bold mb-1.5 uppercase tracking-wide truncate ${bgImage ? 'text-white/80' : 'text-slate-500'}`}>{label}</p>
+          <p className={`text-xl lg:text-2xl font-black tracking-tight leading-tight drop-shadow-sm ${bgImage ? 'text-white' : 'text-slate-800'}`}>{value}</p>
         </div>
       </div>
+
+      {canManage && (
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-20">
+          <button onClick={() => onEdit(item)} className="text-[10px] text-purple-600 font-bold bg-white/90 px-2 py-1 rounded shadow-sm">แก้ไข</button>
+          <button onClick={() => onDelete(item)} className="text-[10px] text-rose-600 font-bold bg-white/90 px-2 py-1 rounded shadow-sm">ลบ</button>
+        </div>
+      )}
     </motion.div>
   );
 };
 
-
+// ==========================================
+// 📌 Main Component
+// ==========================================
 export default function Symbols() {
+  const { user } = useAuth();
+  
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [showModal, setShowModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+
+  const canManage = Boolean(
+    user && (['admin', 'faculty', 'teacher', 'staff'].includes(String(user.role || '').toLowerCase()) || user.isAdmin === true || String(user.email || '').endsWith('@sci.kmutnb.ac.th'))
+  );
+
   useEffect(() => {
     window.scrollTo(0, 0);
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const sep = GOOGLE_SHEET_API_URL.includes('?') ? '&' : '?';
+      const response = await fetch(`${GOOGLE_SHEET_API_URL}${sep}sheet=Symbols`);
+      if (!response.ok) throw new Error('Network error');
+      const result = await response.json();
+      setItems(Array.isArray(result) ? result : (result.data || []));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openModal = (category, item = null) => {
+    if (item) {
+      setEditingItem(item);
+      setFormData(item);
+    } else {
+      setEditingItem(null);
+      setFormData({ ...EMPTY_FORM, category });
+    }
+    setShowModal(true);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!canManage) return;
+    try {
+      setSubmitting(true);
+      
+      let finalImageUrl = formData.detail3; // ตั้งค่าเริ่มต้นเป็นลิงก์เดิมที่มีอยู่แล้ว
+
+      // 🌟 สเต็ปที่ 1: ถ้าแอดมินมีการ "เลือกไฟล์รูปภาพใหม่" ให้ส่งไป Supabase ก่อน
+      if (uploadFile) {
+        const fileExt = uploadFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`; // สุ่มชื่อไฟล์ป้องกันการซ้ำ
+        const filePath = `symbols/${fileName}`; // เก็บไว้ในโฟลเดอร์ symbols/
+
+        // อัปโหลดไฟล์ขึ้น Supabase (เปลี่ยน 'bme-assets' เป็นชื่อ Bucket ของคุณ)
+        const { error: uploadError } = await supabase.storage
+          .from('bme-assets') 
+          .upload(filePath, uploadFile);
+
+        if (uploadError) throw uploadError;
+
+        // ขอลิงก์ Public URL กลับมา
+        const { data: publicUrlData } = supabase.storage
+          .from('bme-assets')
+          .getPublicUrl(filePath);
+
+        finalImageUrl = publicUrlData.publicUrl; // นำลิงก์ใหม่มาทับลิงก์เดิม
+      }
+
+      // 🌟 สเต็ปที่ 2: นำข้อความและลิงก์รูป (ที่อัปเดตแล้ว) ไปบันทึกลง Google Sheets
+      const action = editingItem ? 'update' : 'create';
+      await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          sheet: 'Symbols',
+          action,
+          data: { 
+            ...formData, 
+            detail3: finalImageUrl, // บันทึกลิงก์รูปจาก Supabase ลงชีต
+            id: editingItem ? editingItem.id : Date.now().toString() 
+          }
+        })
+      });
+
+      // รีเซ็ตค่าและปิดหน้าต่าง
+      setShowModal(false);
+      setUploadFile(null); // ล้างค่าไฟล์ที่เลือก
+      await fetchData(); // โหลดข้อมูลใหม่มาแสดง
+      
+    } catch (err) {
+      console.error(err);
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล หรือการอัปโหลดรูปภาพ');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (item) => {
+    if (!canManage || !window.confirm(`ยืนยันการลบ: ${item.title}?`)) return;
+    try {
+      await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ sheet: 'Symbols', action: 'delete', id: item.id })
+      });
+      await fetchData();
+    } catch (err) {
+      alert('ไม่สามารถลบได้');
+    }
+  };
+
+  const getSectionData = (category) => ({
+    symbols: items.filter(i => String(i.category || '').trim().toLowerCase() === category && String(i.subCategory || '').trim().toLowerCase() === 'symbol'),
+    colors: items.filter(i => String(i.category || '').trim().toLowerCase() === category && String(i.subCategory || '').trim().toLowerCase() === 'color'),
+    facts: items.filter(i => String(i.category || '').trim().toLowerCase() === category && String(i.subCategory || '').trim().toLowerCase() === 'fact'),
+  });
+
+  const sections = [
+    { key: 'university', title: 'ระดับมหาวิทยาลัย', banner: 'website' },
+    { key: 'faculty', title: 'ระดับคณะ', banner: 'calendar' },
+    { key: 'department', title: 'ระดับภาควิชา', banner: 'exam' },
+    { key: 'bme', title: 'ระดับสาขาวิชา', banner: 'scholarship' }
+  ];
 
   return (
     <div className="relative font-sans text-slate-900 bg-[#fdfcff] min-h-screen pt-16 pb-32">
       <AuroraBackground />
-
       <div className="relative z-10 max-w-[1250px] mx-auto px-4 md:px-6 pt-2">
 
-        {/* ---------------- Header ---------------- */}
         <div className="text-center max-w-4xl mx-auto pt-2 pb-10">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
             สัญลักษณ์และแบรนด์
           </h1>
           <p className="font-medium text-slate-600 text-lg md:text-xl leading-relaxed mx-auto max-w-2xl">
@@ -191,107 +324,130 @@ export default function Symbols() {
           </p>
         </div>
 
-        {/* ---------------- 1. มหาวิทยาลัย ---------------- */}
-        <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner text="สัญลักษณ์ระดับมหาวิทยาลัย" variant="website" />
+        {loading ? <div className="text-center text-slate-500 py-20">กำลังโหลดข้อมูล...</div> : 
+          sections.map(sec => {
+            const data = getSectionData(sec.key);
+            // 💡 แก้ไข Layout ให้เป็น Grid เดียวกันทั้งหมด และให้สาขา BME เป็น 4 คอลัมน์
+            const gridCols = sec.key === 'bme' ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3';
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <SymbolCard
-              img={imgKmutnbSeal}
-              tag="ตรามหาวิทยาลัย"
-              title="ตราประจำมหาวิทยาลัย"
-              desc="ตราสัญลักษณ์ทางการของมหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ"
-              accent={COLORS.university.hex}
-            />
-            <SymbolCard
-              img={imgKmutnbIdentity}
-              tag="ตราเอกลักษณ์"
-              title="ตราเอกลักษณ์มหาวิทยาลัย"
-              desc="ตราเอกลักษณ์ที่ใช้ในงานสื่อสารและประชาสัมพันธ์ของมหาวิทยาลัย"
-              accent={COLORS.university.hex}
-            />
-            <SymbolCard
-              img={imgLogo67}
-              tag="ครบรอบ 67 ปี"
-              title="สัญลักษณ์เฉลิมฉลอง"
-              desc="สัญลักษณ์เฉลิมฉลองวาระครบรอบ 67 ปีของมหาวิทยาลัย"
-              accent={COLORS.university.hex}
-            />
-          </div>
+            return (
+              <div key={sec.key} className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+                  <div className="flex-1 w-full"><SectionBanner text={`สัญลักษณ์${sec.title}`} variant={sec.banner} /></div>
+                  {canManage && (
+                    <button onClick={() => openModal(sec.key)} className="px-5 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold shadow hover:bg-purple-700 shrink-0">
+                      + เพิ่มข้อมูล ({sec.title})
+                    </button>
+                  )}
+                </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-stretch">
-            <ColorSwatch label="สีประจำมหาวิทยาลัย" color={COLORS.university} />
-            {/* 📌 ใช้รูป imgPradoo เป็นไอคอน */}
-            <FactCard icon={imgPradoo} label="ต้นไม้ประจำมหาวิทยาลัย" value="ต้นประดู่แดง" tone="from-rose-100/50 to-orange-50/50 border-rose-100" />
-            {/* 📌 ใช้รูป imgK4 เป็นภาพพื้นหลัง */}
-            <FactCard icon="🎓" bgImage={imgK4} label="วันสถาปนามหาวิทยาลัย" value="19 กุมภาพันธ์ พ.ศ. 2502" tone="border-indigo-100" />
-          </div>
-        </div>
-
-        {/* ---------------- 2. คณะวิทยาศาสตร์ประยุกต์ ---------------- */}
-        <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner text="สัญลักษณ์ระดับคณะ" variant="calendar" />
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <SymbolCard
-              img={imgAppliedScience}
-              tag="ตราคณะ"
-              title="ตราคณะวิทยาศาสตร์ประยุกต์"
-              desc="ตราสัญลักษณ์ประจำคณะวิทยาศาสตร์ประยุกต์ มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ"
-              accent={COLORS.faculty.hex}
-            />
-            <ColorSwatch label="สีประจำคณะ" color={COLORS.faculty} />
-            {/* 📌 ใช้รูป imgApplied เป็นภาพพื้นหลัง */}
-            <FactCard icon="🏛️" bgImage={imgApplied} label="วันก่อตั้งคณะ" value="4 พฤษภาคม พ.ศ. 2531" tone="border-amber-100" />
-          </div>
-        </div>
-
-        {/* ---------------- 3. ภาควิชา ---------------- */}
-        <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner text="สัญลักษณ์ระดับภาควิชา" variant="exam" />
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <SymbolCard
-              img={imgIMI}
-              title="ตราภาควิชา"
-              desc="ตราสัญลักษณ์ประจำภาควิชาฟิสิกส์อุตสาหกรรมและอุปกรณ์การแพทย์"
-              accent={COLORS.department.hex}
-            />
-            <ColorSwatch label="สีประจำภาควิชา" color={COLORS.department} />
-            {/* 📌 ใช้รูป imgImi04 เป็นภาพพื้นหลัง */}
-            <FactCard icon="🔬" bgImage={imgImi04} label="ปีก่อตั้งภาควิชา" value="พ.ศ. 2531" tone="border-purple-100" />
-          </div>
-        </div>
-
-        {/* ---------------- 4. สาขาวิชา BME ---------------- */}
-        <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <SectionBanner text="สัญลักษณ์ระดับสาขาวิชา" variant="scholarship" />
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <SymbolCard
-              img={imgBmeLogo}
-              tag="สัญลักษณ์สาขา"
-              title="สัญลักษณ์สาขา BME"
-              desc="สัญลักษณ์ประจำสาขาวิชาวิศวกรรมชีวการแพทย์"
-              accent={COLORS.bme.hex}
-            />
-            <SymbolCard
-              img={imgBmeMascot}
-              tag="มาสคอต"
-              title="มาสคอตประจำสาขาวิชา"
-              desc="ใช้ในงานกิจกรรมและสื่อประชาสัมพันธ์ของสาขาวิชา"
-              accent={COLORS.bme.hex}
-            />
-            <ColorSwatch label="สีประจำสาขาวิชา" color={COLORS.bme} />
-            {/* 📌 สาขาวิชายังคงใช้สี Gradient ธรรมดาแบบเดิม */}
-            <FactCard icon="🧬" label="ปีก่อตั้งสาขาวิชา" value="พ.ศ. 2557" tone="from-rose-100/50 to-pink-50/50 border-rose-100" />
-          </div>
-        </div>
+                {/* 💡 นำ Card ทุกประเภทมาเรียงต่อกันใน Grid เดียว เพื่อให้ Layout เหมือนต้นฉบับ */}
+                <div className={`grid ${gridCols} gap-6 h-full items-stretch`}>
+                  {data.symbols.map(item => <SymbolCard key={item.id} item={item} canManage={canManage} onEdit={openModal} onDelete={handleDelete} />)}
+                  {data.colors.map(item => <ColorSwatch key={item.id} item={item} canManage={canManage} onEdit={openModal} onDelete={handleDelete} />)}
+                  {data.facts.map(item => <FactCard key={item.id} item={item} canManage={canManage} onEdit={openModal} onDelete={handleDelete} />)}
+                </div>
+                
+                {data.symbols.length === 0 && data.colors.length === 0 && data.facts.length === 0 && (
+                  <p className="text-center text-slate-400 py-10">ยังไม่มีข้อมูลในหมวดหมู่นี้</p>
+                )}
+              </div>
+            );
+          })
+        }
 
         <p className="text-center text-[12px] font-medium text-slate-500 italic px-4">
           * โปรดใช้ตราและสัญลักษณ์ตามรูปแบบที่มหาวิทยาลัยกำหนด ไม่ดัดแปลงสีหรือสัดส่วนของตรา
         </p>
       </div>
+
+      {/* 🔒 Modal Form สำหรับจัดการข้อมูล */}
+      <AnimatePresence>
+        {canManage && showModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            <motion.form onSubmit={handleSave} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100">
+              <h3 className="text-xl font-extrabold text-slate-900 mb-4 pb-3 border-b">
+                {editingItem ? 'แก้ไขข้อมูลสัญลักษณ์' : 'เพิ่มข้อมูลสัญลักษณ์ใหม่'}
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold">หมวดหมู่ระดับ</label>
+                  <select className="w-full mt-1 p-2 border rounded-xl" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                    <option value="university">มหาวิทยาลัย</option>
+                    <option value="faculty">คณะ</option>
+                    <option value="department">ภาควิชา</option>
+                    <option value="bme">สาขาวิชา (BME)</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-xs font-bold">ประเภทข้อมูล</label>
+                  <select className="w-full mt-1 p-2 border rounded-xl" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}>
+                    <option value="symbol">ตราสัญลักษณ์ (Symbol)</option>
+                    <option value="color">สีประจำหน่วยงาน (Color)</option>
+                    <option value="fact">ข้อมูล/วันสำคัญ (Fact)</option>
+                  </select>
+                </div>
+
+                {formData.subCategory === 'symbol' && (
+  <>
+    <div><label className="text-xs font-bold">ชื่อตรา (Title)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
+    <div><label className="text-xs font-bold">ป้ายกำกับสั้นๆ (Tag)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.subtitle} onChange={e => setFormData({...formData, subtitle: e.target.value})} /></div>
+    <div><label className="text-xs font-bold">คำอธิบาย (Description)</label><textarea className="w-full mt-1 p-2 border rounded-xl" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} /></div>
+    <div><label className="text-xs font-bold">รหัสสีของแถบ (HEX) เช่น #AC3520</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail2} onChange={e => setFormData({...formData, detail2: e.target.value})} /></div>
+    
+    {/* 🌟 จุดที่แก้ไข: เปลี่ยนจาก Input Text เป็น Input File */}
+    <div>
+      <label className="text-xs font-bold">อัปโหลดรูปภาพโลโก้ใหม่</label>
+      <input 
+        type="file" 
+        accept="image/*" 
+        className="w-full mt-1 p-2 border rounded-xl text-xs bg-slate-50 cursor-pointer" 
+        onChange={e => setUploadFile(e.target.files[0])} 
+      />
+      {/* แจ้งเตือนแอดมินกรณีเป็นการกด "แก้ไข" แล้วมีรูปเดิมอยู่แล้ว */}
+      {editingItem && formData.detail3 && !uploadFile && (
+        <p className="text-[10px] text-green-600 mt-1">
+          ✓ มีรูปภาพเดิมอยู่แล้ว (ไม่ต้องเลือกไฟล์ถ้าไม่ต้องการเปลี่ยนรูป)
+        </p>
+      )}
+    </div>
+  </>
+)}
+
+                {formData.subCategory === 'color' && (
+                  <>
+                    <div><label className="text-xs font-bold">หัวข้อ (เช่น สีประจำมหาวิทยาลัย)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold">ชื่อสี (เช่น สีแดงหมากสุก)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold">HEX Code (เช่น #AC3520)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.detail2} onChange={e => setFormData({...formData, detail2: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold">RGB (เช่น 172, 53, 32)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail3} onChange={e => setFormData({...formData, detail3: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold">CMYK (ถ้ามี)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail4} onChange={e => setFormData({...formData, detail4: e.target.value})} /></div>
+                  </>
+                )}
+
+                {formData.subCategory === 'fact' && (
+                  <>
+                    <div><label className="text-xs font-bold">หัวข้อ (เช่น วันสถาปนา)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold">ข้อความ/วันที่ (เช่น 19 กุมภาพันธ์...)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.subtitle} onChange={e => setFormData({...formData, subtitle: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold">ไอคอน (Emoji หรือ URL รูปภาพ)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} placeholder="เช่น 🎓 หรือ https://..." /></div>
+                    <div><label className="text-xs font-bold">URL รูปภาพพื้นหลัง (ถ้ามี)</label><input className="w-full mt-1 p-2 border rounded-xl text-xs" value={formData.detail2} onChange={e => setFormData({...formData, detail2: e.target.value})} placeholder="ใส่ลิงก์รูปพื้นหลังการ์ด" /></div>
+                    <div><label className="text-xs font-bold">Tailwind Gradient Classes (สีพื้นหลังสำรอง)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail3} onChange={e => setFormData({...formData, detail3: e.target.value})} placeholder="เช่น border-indigo-100" /></div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
+                <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100">ยกเลิก</button>
+                <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-purple-700 disabled:opacity-50">
+                  {submitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
+                </button>
+              </div>
+            </motion.form>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

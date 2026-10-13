@@ -1,8 +1,37 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
+
+// 📌 ดึง Component ธีมหลัก (พื้นหลังแสงออโรร่า & ป้ายแบนเนอร์) จากไฟล์ส่วนกลาง
+import { AuroraBackground, SectionBanner } from '../components/ThemeElements';
+
+// 📌 ดึง Component แผนที่ประเทศไทยมาแสดงในส่วน "ทำไมต้อง BME KMUTNB"
+import ThailandAlumniMap from '../components/ThailandAlumniMap';
+
 import bmeAlumniBar from '../assets/bme_alumni_bar.png';
-import bmeLogo from '../assets/bme_Logo.png'; // 📌 เพิ่ม Import โลโก้ BME
+import bmeLogo from '../assets/bme_Logo.png';
+
+// ข้อมูลจำนวนศิษย์เก่าที่กระจายตัวทำงานในจังหวัดต่างๆ สำหรับแสดงบนหน้าแรก
+const HOME_ALUMNI_PROVINCE_DATA = {
+  "กรุงเทพมหานคร": 42,
+  "นนทบุรี": 18,
+  "ชลบุรี": 15,
+  "ปทุมธานี": 12,
+  "สมุทรปราการ": 10,
+  "เชียงใหม่": 11,
+  "ระยอง": 9,
+  "ขอนแก่น": 8,
+  "นครราชสีมา": 7,
+  "สงขลา": 6,
+  "นครปฐม": 6,
+  "สุราษฎร์ธานี": 5,
+  "พระนครศรีอยุธยา": 5,
+  "ภูเก็ต": 4,
+  "พิษณุโลก": 4,
+  "อุบลราชธานี": 3,
+  "อุดรธานี": 3,
+  "นครศรีธรรมราช": 2,
+};
 
 // ==========================================
 // 📌 1. Component: ระบบ Fade-in เวลาเลื่อนจอ
@@ -29,12 +58,12 @@ const FadeInSection = ({ children, delay = "0s", className = "" }) => {
 };
 
 // ==========================================
-// 📌 2. Component: พื้นหลังแสงออโรร่าหลักของเว็บ
+// 📌 2. Component: หน้ากากต้อนรับ (Welcome Mask - ปรับไอคอนให้สมมาตรและสมส่วน)
 // ==========================================
-const AuroraBackground = () => (
-  <div className="fixed inset-0 z-0 bg-[#fdfcff] overflow-hidden pointer-events-none">
+const WelcomeMask = ({ textScale, textOpacity, overlayOpacity, overlayPointer }) => (
+  <motion.div style={{ opacity: overlayOpacity, pointerEvents: overlayPointer }} className="fixed inset-0 z-50 flex items-center justify-center bg-white overflow-hidden">
     <style>{`
-      .aurora-effect {
+      .aurora-mask-bg {
         --aurora-white: #ffffff;
         --aurora-transparent: rgba(255,255,255,0);
         --aurora-c1: #c084fc; 
@@ -51,7 +80,7 @@ const AuroraBackground = () => (
         mask-image: radial-gradient(ellipse at 100% 0%, black 10%, transparent 70%);
         -webkit-mask-image: radial-gradient(ellipse at 100% 0%, black 10%, transparent 70%);
       }
-      .aurora-effect::after {
+      .aurora-mask-bg::after {
         content: ""; position: absolute; inset: 0;
         background-image: var(--light-gradient), var(--aurora-bg);
         background-size: 200% 100%; background-attachment: fixed;
@@ -63,40 +92,87 @@ const AuroraBackground = () => (
         100% { background-position: 350% 50%, 350% 50%; }
       }
     `}</style>
-    <motion.div animate={{ x: ["0%", "2%", "-2%", "0%"], y: ["0%", "-2%", "2%", "0%"] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }} className="absolute -top-[10%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-purple-300/20 blur-[100px]" />
-    <motion.div animate={{ x: ["0%", "-2%", "2%", "0%"], y: ["0%", "2%", "-2%", "0%"] }} transition={{ duration: 18, repeat: Infinity, ease: "linear" }} className="absolute -bottom-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-rose-200/20 blur-[100px]" />
-  </div>
-);
 
-// ==========================================
-// 📌 3. Component: หน้ากากต้อนรับ (Welcome Mask)
-// ==========================================
-const WelcomeMask = ({ textScale, textOpacity, overlayOpacity, overlayPointer }) => (
-  <motion.div style={{ opacity: overlayOpacity, pointerEvents: overlayPointer }} className="fixed inset-0 z-50 flex items-center justify-center bg-white overflow-hidden">
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-       <div className="absolute -inset-[10px] opacity-70 will-change-transform aurora-effect"></div>
+      <div className="absolute -inset-[10px] opacity-70 will-change-transform aurora-mask-bg"></div>
     </div>
-    <motion.div style={{ scale: textScale, opacity: textOpacity }} className="relative w-full h-full flex flex-col items-center justify-center will-change-transform transform-gpu z-10">
+
+    <motion.div style={{ scale: textScale, opacity: textOpacity }} className="relative w-full max-w-6xl mx-auto h-full flex flex-col items-center justify-center will-change-transform transform-gpu z-10 px-6">
       
-      {/* 3D Stickers */}
-      <motion.div animate={{ y: ["0px", "-15px", "0px"] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[15%] left-[20%] hidden md:flex items-center justify-center p-5 bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgba(147,51,234,0.15)]">
-        <svg className="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+      {/* ✨ ป้ายไอคอนลอยตัว 4 มุมแบบสมมาตร (Symmetrical Floating Glass Badges) */}
+      {/* 1. มุมบนซ้าย: Medical Instrumentation */}
+      <motion.div
+        animate={{ y: ["0px", "-12px", "0px"], rotate: [-2, 1, -2] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-[16%] left-[6%] lg:left-[10%] hidden md:flex items-center gap-3.5 px-4 py-3 bg-white/85 backdrop-blur-xl rounded-2xl border border-purple-100 shadow-[0_12px_35px_rgba(147,51,234,0.12)]"
+      >
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-sm shrink-0">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        </div>
+        <div className="text-left pr-1">
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-purple-600">Vital Signals</p>
+          <p className="text-xs font-black text-slate-800">Medical Devices</p>
+        </div>
       </motion.div>
-      <motion.div animate={{ y: ["0px", "15px", "0px"] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[20%] right-[20%] hidden md:flex items-center justify-center p-5 bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgba(225,29,72,0.15)]">
-        <svg className="w-10 h-10 text-rose-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
+
+      {/* 2. มุมบนขวา: Healthcare AI & Robotics (ตำแหน่งสมมาตรกับมุมบนซ้าย) */}
+      <motion.div
+        animate={{ y: ["0px", "12px", "0px"], rotate: [2, -1, 2] }}
+        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-[16%] right-[6%] lg:right-[10%] hidden md:flex items-center gap-3.5 px-4 py-3 bg-white/85 backdrop-blur-xl rounded-2xl border border-rose-100 shadow-[0_12px_35px_rgba(225,29,72,0.12)]"
+      >
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center shadow-sm shrink-0">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+          </svg>
+        </div>
+        <div className="text-left pr-1">
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-rose-600">Smart Health</p>
+          <p className="text-xs font-black text-slate-800">AI & Robotics</p>
+        </div>
       </motion.div>
-      <motion.div animate={{ y: ["0px", "10px", "0px"] }} transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[25%] left-[25%] hidden md:flex items-center justify-center p-5 bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgba(79,70,229,0.15)]">
-        <svg className="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-3-3v6" /></svg>
+
+      {/* 3. มุมล่างซ้าย: Clinical & Hospital Engineering */}
+      <motion.div
+        animate={{ y: ["0px", "10px", "0px"], rotate: [-1, 2, -1] }}
+        transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-[20%] left-[8%] lg:left-[12%] hidden md:flex items-center gap-3.5 px-4 py-3 bg-white/85 backdrop-blur-xl rounded-2xl border border-indigo-100 shadow-[0_12px_35px_rgba(79,70,229,0.12)]"
+      >
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div className="text-left pr-1">
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600">Safety & Standard</p>
+          <p className="text-xs font-black text-slate-800">Clinical Engineering</p>
+        </div>
       </motion.div>
-      <motion.div animate={{ y: ["0px", "-10px", "0px"] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[22%] right-[25%] hidden md:flex items-center justify-center p-5 bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgba(15,23,42,0.1)]">
-        <svg className="w-10 h-10 text-slate-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18a2 2 0 100-4 2 2 0 000 4z" /><path strokeLinecap="round" strokeLinejoin="round" d="M20 9a2 2 0 100-4 2 2 0 000 4z" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 9a2 2 0 100-4 2 2 0 000 4z" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 9l8 5m0 0l8-5" /></svg>
+
+      {/* 4. มุมล่างขวา: Biomedical Innovation (ตำแหน่งสมมาตรกับมุมล่างซ้าย) */}
+      <motion.div
+        animate={{ y: ["0px", "-10px", "0px"], rotate: [1, -2, 1] }}
+        transition={{ duration: 7.5, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-[20%] right-[8%] lg:right-[12%] hidden md:flex items-center gap-3.5 px-4 py-3 bg-white/85 backdrop-blur-xl rounded-2xl border border-teal-100 shadow-[0_12px_35px_rgba(13,148,136,0.12)]"
+      >
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center shadow-sm shrink-0">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+          </svg>
+        </div>
+        <div className="text-left pr-1">
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-teal-600">Research & Lab</p>
+          <p className="text-xs font-black text-slate-800">Bio-Innovation</p>
+        </div>
       </motion.div>
 
       <div className="mb-3 md:mb-4 z-20">
         <img src={bmeAlumniBar} alt="BME Alumni Logo" className="h-6 md:h-8 lg:h-10 w-auto object-contain drop-shadow-sm opacity-85" />
       </div>
 
-      <div className="text-[22vw] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-slate-900 via-purple-700 to-rose-600 relative leading-none text-center drop-shadow-lg z-20">
+      <div className="text-[22vw] sm:text-[20vw] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-slate-900 via-purple-700 to-rose-600 relative leading-none text-center drop-shadow-lg z-20 select-none">
         BME
       </div>
 
@@ -112,6 +188,7 @@ const WelcomeMask = ({ textScale, textOpacity, overlayOpacity, overlayPointer })
         </p>
       </div>
     </motion.div>
+
     <div className="absolute bottom-10 text-slate-400 font-bold uppercase tracking-widest text-sm z-20 animate-bounce">
       เลื่อนลงเพื่อเข้าสู่หน้าเว็บ ↓
     </div>
@@ -278,16 +355,16 @@ const DestinationCard = ({ imageUrl, title, subtitle, stats, themeColor }) => {
   );
 };
 
-
 // ==========================================
 // 📌 4. Component: เนื้อหาหลัก (Main Content)
 // ==========================================
 const MainContent = () => {
   const bentoGlass = "rounded-[2.5rem] bg-white/85 backdrop-blur-2xl border border-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(147,51,234,0.08)] hover:-translate-y-1 transition-all duration-500 relative overflow-hidden";
-  
+  const sectionWrapperGlass = "rounded-[2.5rem] md:rounded-[3rem] bg-white/55 backdrop-blur-2xl border border-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6 sm:p-8 md:p-12 relative overflow-hidden";
+
   return (
     <div className="relative z-10 w-full pb-32 px-4 md:px-6"> 
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-16 md:gap-20 pt-4"> 
+      <div className="max-w-[1250px] mx-auto flex flex-col gap-16 md:gap-20 pt-4"> 
         
         {/* =========================================
             🍱 BENTO GRID SECTION (Hero & Stats)
@@ -296,10 +373,8 @@ const MainContent = () => {
           
           <FadeInSection delay="0.1s" className="lg:col-span-2">
             <div className={`p-10 md:p-16 flex flex-col justify-center text-center items-center h-full ${bentoGlass}`}>
-              {/* 📌 เพิ่มแสง Holographic เข้าไปในการ์ดเพื่อให้เข้าเซ็ต */}
               <LightHolographicBeams />
               
-              {/* 📌 เพิ่มโลโก้ BME */}
               <div className="mb-6 md:mb-8 z-10">
                 <img 
                   src={bmeLogo} 
@@ -316,10 +391,10 @@ const MainContent = () => {
                 การเรียนรู้อัจฉริยะที่เชื่อมต่อการเรียนรู้เชิงทฤษฎี และเชิงปฏิบัติการ เพื่อผลิตบุคลากรขับเคลื่อนการซ่อมบำรุง และการผลิตนวัตกรรมวงการเครื่องมือแพทย์
               </p>
               <div className="flex flex-col sm:flex-row gap-4 z-10">
-                <Link to="/about" className="bg-[#0f172a] text-white px-8 py-3.5 rounded-2xl font-bold text-center text-lg hover:bg-purple-900 hover:shadow-[0_8px_25px_rgba(15,23,42,0.3)] hover:-translate-y-0.5 transition-all duration-300 shadow-md">
+                <Link to="/about/department" className="bg-[#0f172a] text-white px-8 py-3.5 rounded-2xl font-bold text-center text-lg hover:bg-purple-900 hover:shadow-[0_8px_25px_rgba(15,23,42,0.3)] hover:-translate-y-0.5 transition-all duration-300 shadow-md">
                   เกี่ยวกับสาขาวิชา
                 </Link>
-                <Link to="/directory" className="bg-white text-slate-700 border border-slate-200 px-8 py-3.5 rounded-2xl font-bold text-center text-lg hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 hover:shadow-[0_8px_25px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 transition-all duration-300 shadow-sm">
+                <Link to="/alumni/database" className="bg-white text-slate-700 border border-slate-200 px-8 py-3.5 rounded-2xl font-bold text-center text-lg hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 hover:shadow-[0_8px_25px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 transition-all duration-300 shadow-sm">
                   ทำเนียบศิษย์เก่า
                 </Link>
               </div>
@@ -338,7 +413,7 @@ const MainContent = () => {
               <p className="text-lg text-slate-700 font-medium leading-relaxed mb-8 max-w-sm mx-auto z-10">
                 ที่มุ่งมั่นพัฒนาหลักสูตร ที่สร้างสรรค์องค์ความรู้และนวัตกรรม เพื่อสร้างเสริมสังคมสู่การพัฒนาอย่างยั่งยืน
               </p>
-              <Link to="/about" className="px-6 py-2.5 rounded-full border border-slate-300 bg-white/50 backdrop-blur-md text-slate-700 text-sm font-bold hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all duration-300 flex items-center gap-2 z-10">
+              <Link to="/about/department" className="px-6 py-2.5 rounded-full border border-slate-300 bg-white/50 backdrop-blur-md text-slate-700 text-sm font-bold hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all duration-300 flex items-center gap-2 z-10">
                 เกี่ยวกับสาขาวิชา <span aria-hidden="true">&rarr;</span>
               </Link>
             </div>
@@ -364,16 +439,16 @@ const MainContent = () => {
         </div>
 
         {/* =========================================
-            📌 MOTTO SECTION (Light Holographic Beams ให้อยู่บรรทัดเดียว)
+            📌 MOTTO SECTION (Light Holographic Beams)
         ========================================= */}
         <section className="py-2">
           <FadeInSection delay="0.2s">
-            <div className="w-full rounded-[2.5rem] bg-gradient-to-br from-slate-50 to-[#f3f4f6] p-12 flex flex-col items-center justify-center text-center relative overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.05)] border border-white">
+            <div className="w-full rounded-[2.5rem] bg-gradient-to-br from-slate-50 to-[#f3f4f6] p-8 sm:p-12 flex flex-col items-center justify-center text-center relative overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.05)] border border-white">
               
               <LightHolographicBeams />
 
               <div className="relative z-30 flex flex-col items-center gap-2">
-                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight text-slate-800 drop-shadow-sm whitespace-nowrap">
+                <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight text-slate-800 drop-shadow-sm sm:whitespace-nowrap">
                   " นวัตกรรมทางการแพทย์ เพื่ออนาคตชีวิตที่ดีกว่า "
                 </h2>
                 
@@ -387,112 +462,175 @@ const MainContent = () => {
         </section>
 
         {/* =========================================
-            📌 SECTION: "ทำไมต้อง BME KMUTNB" (แบบ Destination Card)
+            📌 SECTION: "ทำไมต้อง BME KMUTNB" (ใช้ SectionBanner + DestinationCard + แผนที่ศิษย์เก่าทั่วประเทศ)
         ========================================= */}
         <section>
           <FadeInSection>
-            <div className="mb-10 px-2 text-center md:text-left">
-              <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4 tracking-tighter">ทำไมต้อง BME KMUTNB</h2>
-              <p className="text-slate-600 text-lg md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
-                ความแตกต่างที่ทำให้บัณฑิตของเราพร้อมตอบโจทย์ภาคอุตสาหกรรมและการแพทย์
-              </p>
+            <div className={sectionWrapperGlass}>
+              <div className="max-w-4xl mx-auto">
+                <SectionBanner text="ทำไมต้อง BME KMUTNB" variant="website" />
+              </div>
+
+              <div className="text-center max-w-2xl mx-auto mb-10">
+                <p className="text-slate-600 text-base sm:text-lg md:text-xl font-medium">
+                  ความแตกต่างที่ทำให้บัณฑิตของเราพร้อมตอบโจทย์ภาคอุตสาหกรรมและการแพทย์ทั่วประเทศ
+                </p>
+              </div>
+
+              {/* การ์ดจุดเด่น 4 ด้าน */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                <FadeInSection delay="0.1s" className="h-full">
+                  <DestinationCard 
+                    imageUrl="https://static.naewna.com/uploads/news/source/784328.jpg"
+                    title="1 ใน 10"
+                    subtitle="สถาบันชั้นนำของประเทศ"
+                    stats="สถาบันชั้นนำที่เปิดสอนหลักสูตรวิศวกรรมชีวการแพทย์ มุ่งเน้นสร้างนวัตกรและวิศวกรทางการแพทย์อย่างเต็มรูปแบบ เพื่อรองรับอุตสาหกรรมแห่งอนาคต"
+                    themeColor="270 50% 30%" 
+                  />
+                </FadeInSection>
+
+                <FadeInSection delay="0.2s" className="h-full">
+                  <DestinationCard 
+                    imageUrl="https://greatermanchester.ac.uk/assets/Uploads/Biomedical-picture2.jpg"
+                    title="เครือข่าย"
+                    subtitle="ภาครัฐและเอกชน"
+                    stats="บูรณาการความร่วมมือกับโรงพยาบาลและสถาบันวิจัยชั้นนำ เพื่อยกระดับการจัดการเรียนการสอนและการฝึกประสบการณ์วิชาชีพด้วยเทคโนโลยีระดับสากล"
+                    themeColor="230 40% 30%" 
+                  />
+                </FadeInSection>
+
+                <FadeInSection delay="0.3s" className="h-full">
+                  <DestinationCard 
+                    imageUrl="https://www.kmutnb.ac.th/getattachment/About-(1)/Contact-Directions/Contact/bkk.jpg.aspx?lang=en-GB&width=400&height=252"
+                    title="ผสานทฤษฎี"
+                    subtitle="สู่การปฏิบัติจริง"
+                    stats="พัฒนาหลักสูตรให้สอดรับกับพลวัตของเทคโนโลยีทางการแพทย์ เน้นการลงมือปฏิบัติจริง (Hands-on) เพื่อสร้างบัณฑิตที่พร้อมตอบโจทย์ภาคอุตสาหกรรม"
+                    themeColor="210 60% 30%" 
+                  />
+                </FadeInSection>
+
+                <FadeInSection delay="0.4s" className="h-full">
+                  <DestinationCard 
+                    imageUrl="https://static.thairath.co.th/media/dFQROr7oWzulq5FZUIB4Use3XUllEftJ1zM2KetGy2GBwLcIwDjKVNbYDzCRUV5zrDO.webp"
+                    title="คอมมูนิตี้"
+                    subtitle="แห่งการเรียนรู้ร่วมกัน"
+                    stats="เปิดกว้างด้วยกิจกรรมเสริมทักษะและสร้างเครือข่ายวิชาชีพ ที่เชื่อมโยงความสัมพันธ์ระหว่างศิษย์เก่าและศิษย์ปัจจุบันอย่างยั่งยืน"
+                    themeColor="340 60% 35%" 
+                  />
+                </FadeInSection>
+              </div>
+
+              {/* 🗺️ ส่วนแสดงแผนที่เครือข่ายศิษย์เก่าที่กระจายตัวทำงานทั่วประเทศ */}
+              <FadeInSection delay="0.25s">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-white/80 backdrop-blur-xl rounded-[2.25rem] p-6 sm:p-8 md:p-10 border border-purple-100/80 shadow-sm">
+                  
+                  {/* ฝั่งซ้าย: คำอธิบายจุดแข็งด้านเครือข่ายศิษย์เก่า */}
+                  <div className="lg:col-span-5 flex flex-col justify-center space-y-5">
+                    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-100 text-purple-800 text-xs font-extrabold uppercase tracking-wider w-fit">
+                      🌟 Nationwide Alumni Network
+                    </span>
+                    <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight tracking-tight">
+                      เครือข่ายรุ่นพี่ศิษย์เก่า<br />
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-rose-600">
+                        กระจายตัวทำงานทั่วประเทศ
+                      </span>
+                    </h3>
+                    <p className="text-slate-600 text-sm sm:text-base font-medium leading-relaxed">
+                      บัณฑิตจากสาขาวิชาวิศวกรรมชีวการแพทย์ มจพ. ได้รับความไว้วางใจจากโรงพยาบาลรัฐ เอกชน และบริษัทเครื่องมือแพทย์ชั้นนำระดับสากล โดยปฏิบัติงานและรับผิดชอบดูแลพื้นที่ครอบคลุมทั่วทุกภูมิภาคของประเทศไทย
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="p-4 rounded-2xl bg-purple-50/80 border border-purple-100">
+                        <p className="text-2xl font-black text-purple-900">ทั่วทุกภาค</p>
+                        <p className="text-xs font-bold text-purple-700 mt-0.5">โรงพยาบาล & บริษัทชั้นนำ</p>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-rose-50/80 border border-rose-100">
+                        <p className="text-2xl font-black text-rose-900">สายงานตรง</p>
+                        <p className="text-xs font-bold text-rose-700 mt-0.5">Service, Specialist, Sales, R&D</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <Link
+                        to="/alumni/database"
+                        className="inline-flex items-center gap-2 bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-bold text-sm hover:bg-purple-800 transition-all shadow-md hover:-translate-y-0.5"
+                      >
+                        สำรวจทำเนียบศิษย์เก่าทั้งหมด
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* ฝั่งขวา: Component แผนที่ประเทศไทย Interactive */}
+                  <div className="lg:col-span-7">
+                    <ThailandAlumniMap provinceData={HOME_ALUMNI_PROVINCE_DATA} />
+                  </div>
+
+                </div>
+              </FadeInSection>
+
             </div>
           </FadeInSection>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            
-            <FadeInSection delay="0.1s" className="h-full">
-              <DestinationCard 
-                imageUrl="https://static.naewna.com/uploads/news/source/784328.jpg"
-                title="1 ใน 10"
-                subtitle="สถาบันชั้นนำของประเทศ"
-                stats="สถาบันชั้นนำที่เปิดสอนหลักสูตรวิศวกรรมชีวการแพทย์ มุ่งเน้นสร้างนวัตกรและวิศวกรทางการแพทย์อย่างเต็มรูปแบบ เพื่อรองรับอุตสาหกรรมแห่งอนาคต"
-                themeColor="270 50% 30%" 
-              />
-            </FadeInSection>
-
-            <FadeInSection delay="0.2s" className="h-full">
-              <DestinationCard 
-                imageUrl="https://greatermanchester.ac.uk/assets/Uploads/Biomedical-picture2.jpg"
-                title="เครือข่าย"
-                subtitle="ภาครัฐและเอกชน"
-                stats="บูรณาการความร่วมมือกับโรงพยาบาลและสถาบันวิจัยชั้นนำ เพื่อยกระดับการจัดการเรียนการสอนและการฝึกประสบการณ์วิชาชีพด้วยเทคโนโลยีระดับสากล"
-                themeColor="230 40% 30%" 
-              />
-            </FadeInSection>
-
-            <FadeInSection delay="0.3s" className="h-full">
-              <DestinationCard 
-                imageUrl="https://www.kmutnb.ac.th/getattachment/About-(1)/Contact-Directions/Contact/bkk.jpg.aspx?lang=en-GB&width=400&height=252"
-                title="ผสานทฤษฎี"
-                subtitle="สู่การปฏิบัติจริง"
-                stats="พัฒนาหลักสูตรให้สอดรับกับพลวัตของเทคโนโลยีทางการแพทย์ เน้นการลงมือปฏิบัติจริง (Hands-on) เพื่อสร้างบัณฑิตที่พร้อมตอบโจทย์ภาคอุตสาหกรรม"
-                themeColor="210 60% 30%" 
-              />
-            </FadeInSection>
-
-            <FadeInSection delay="0.4s" className="h-full">
-              <DestinationCard 
-                imageUrl="https://static.thairath.co.th/media/dFQROr7oWzulq5FZUIB4Use3XUllEftJ1zM2KetGy2GBwLcIwDjKVNbYDzCRUV5zrDO.webp"
-                title="คอมมูนิตี้"
-                subtitle="แห่งการเรียนรู้ร่วมกัน"
-                stats="เปิดกว้างด้วยกิจกรรมเสริมทักษะและสร้างเครือข่ายวิชาชีพ ที่เชื่อมโยงความสัมพันธ์ระหว่างศิษย์เก่าและศิษย์ปัจจุบันอย่างยั่งยืน"
-                themeColor="340 60% 35%" 
-              />
-            </FadeInSection>
-
-          </div>
         </section>
 
         {/* =========================================
-            📌 SECTION: ข่าวสารและกิจกรรม (Bento Grid แบบคลีน ไม่มีป้ายกำกับ)
+            📌 SECTION: ข่าวสารและกิจกรรม (ใช้ SectionBanner จาก ThemeElements)
         ========================================= */}
         <section>
           <FadeInSection>
-            <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-5 px-2">
-              <div>
-                <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-3 tracking-tighter">อัปเดตข้อมูลล่าสุด</h2>
-                <p className="text-slate-600 font-medium text-lg">ติดตามความเคลื่อนไหวจากเครือข่าย BME</p>
+            <div className={sectionWrapperGlass}>
+              <div className="max-w-4xl mx-auto">
+                <SectionBanner text="อัปเดตข้อมูลล่าสุด" variant="calendar" />
               </div>
-              <Link to="/events" className="text-slate-800 font-bold hover:bg-white hover:text-indigo-800 transition-colors flex items-center gap-2 px-8 py-4 bg-white/60 backdrop-blur-md rounded-xl border border-white/80 text-sm shadow-sm hover:shadow-md">ดูทั้งหมด <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></Link>
+
+              <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 px-2">
+                <p className="text-slate-600 font-medium text-base sm:text-lg">
+                  ติดตามข่าวสาร ประชาสัมพันธ์ และความเคลื่อนไหวจากเครือข่าย BME KMUTNB
+                </p>
+                <Link to="/events" className="text-slate-800 font-bold hover:bg-slate-900 hover:text-white transition-colors flex items-center gap-2 px-6 py-3 bg-white/80 backdrop-blur-md rounded-xl border border-slate-200 text-sm shadow-sm shrink-0">
+                  ดูทั้งหมด
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </Link>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-5 md:gap-6">
+                {[
+                  { date: '20 พฤศจิกายน 2569', title: 'ประกาศรายชื่อผู้มีสิทธิ์เข้าศึกษาต่อ ระดับปริญญาตรี (รอบพอร์ตฟอลิโอ)', imgText: 'ภาพข่าวประชาสัมพันธ์ 1' },
+                  { date: '18 พฤศจิกายน 2569', title: 'คณาจารย์ BME คว้าผลงานวิจัยยอดเยี่ยม ระดับชาติประจำปี 2026', imgText: 'ภาพข่าวประชาสัมพันธ์ 2' },
+                  { date: '15 พฤศจิกายน 2569', title: 'BME Open House 2026: เปิดบ้านวิศวกรรมชีวการแพทย์', imgText: 'ภาพกิจกรรม 1' },
+                  { date: '2 ตุลาคม 2569', title: 'สัมมนาพิเศษ: AI in Modern Healthcare', imgText: 'ภาพกิจกรรม 2' }
+                ].map((event, i) => (
+                  <FadeInSection key={i} delay={`${i * 0.1}s`} className="h-full">
+                    <Link to="/events" className={`flex flex-col p-5 group ${bentoGlass} h-full`}>
+                      
+                      {/* กรอบรูปภาพ */}
+                      <div className="h-64 bg-slate-200/50 rounded-[1.5rem] relative overflow-hidden mb-6 border border-white/80 shadow-inner shrink-0">
+                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-xl font-bold group-hover:scale-110 transition-transform duration-700 ease-out relative z-10">
+                          {event.imgText}
+                        </div>
+                      </div>
+                      
+                      {/* พื้นที่ข้อความ */}
+                      <div className="px-3 pb-3 flex flex-col flex-grow">
+                        <p className="text-xs font-medium text-indigo-600/80 mb-2 tracking-wide uppercase">
+                          {event.date}
+                        </p>
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-3 group-hover:text-indigo-800 transition-colors leading-snug line-clamp-2">
+                          {event.title}
+                        </h3>
+                        <p className="text-slate-500 font-normal text-sm md:text-base line-clamp-2 mt-auto">
+                          คลิกเพื่อดูรายละเอียดเนื้อหากิจกรรม ข่าวสาร และการลงทะเบียนเข้าร่วมงานได้ที่นี่
+                        </p>
+                      </div>
+
+                    </Link>
+                  </FadeInSection>
+                ))}
+              </div>
             </div>
           </FadeInSection>
-
-          <div className="grid md:grid-cols-2 gap-5 md:gap-6">
-            {[
-              { date: '20 พฤศจิกายน 2569', title: 'ประกาศรายชื่อผู้มีสิทธิ์เข้าศึกษาต่อ ระดับปริญญาตรี (รอบพอร์ตฟอลิโอ)', imgText: 'ภาพข่าวประชาสัมพันธ์ 1' },
-              { date: '18 พฤศจิกายน 2569', title: 'คณาจารย์ BME คว้าผลงานวิจัยยอดเยี่ยม ระดับชาติประจำปี 2026', imgText: 'ภาพข่าวประชาสัมพันธ์ 2' },
-              { date: '15 พฤศจิกายน 2569', title: 'BME Open House 2026: เปิดบ้านวิศวกรรมชีวการแพทย์', imgText: 'ภาพกิจกรรม 1' },
-              { date: '2 ตุลาคม 2569', title: 'สัมมนาพิเศษ: AI in Modern Healthcare', imgText: 'ภาพกิจกรรม 2' }
-            ].map((event, i) => (
-              <FadeInSection key={i} delay={`${i * 0.1}s`} className="h-full">
-                <Link to="/events" className={`flex flex-col p-5 group ${bentoGlass} h-full`}>
-                  
-                  {/* กรอบรูปภาพ */}
-                  <div className="h-64 bg-slate-200/50 rounded-[1.5rem] relative overflow-hidden mb-6 border border-white/80 shadow-inner shrink-0">
-                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-xl font-bold group-hover:scale-110 transition-transform duration-700 ease-out relative z-10">
-                      {event.imgText}
-                    </div>
-                  </div>
-                  
-                  {/* 📌 พื้นที่ข้อความ (ปรับสี Hover และความหนา-บาง ของ Font) */}
-                  <div className="px-3 pb-3 flex flex-col flex-grow">
-                    <p className="text-xs font-medium text-indigo-600/80 mb-2 tracking-wide uppercase">
-                      {event.date}
-                    </p>
-                    {/* 📌 เปลี่ยนสี Hover จากม่วงสด เป็นสีกรมท่า/คราม (Indigo-800) */}
-                    <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-3 group-hover:text-indigo-800 transition-colors leading-snug line-clamp-2">
-                      {event.title}
-                    </h3>
-                    <p className="text-slate-500 font-normal text-sm md:text-base line-clamp-2 mt-auto">
-                      คลิกเพื่อดูรายละเอียดเนื้อหากิจกรรม ข่าวสาร และการลงทะเบียนเข้าร่วมงานได้ที่นี่
-                    </p>
-                  </div>
-
-                </Link>
-              </FadeInSection>
-            ))}
-          </div>
         </section>
 
         {/* =========================================
@@ -527,7 +665,7 @@ const MainContent = () => {
 };
 
 // ==========================================
-// 📌 6. Component ตัวแม่ (Home)
+// 📌 5. Component ตัวแม่ (Home)
 // ==========================================
 export default function Home() {
   const [isFirstVisit, setIsFirstVisit] = useState(true);

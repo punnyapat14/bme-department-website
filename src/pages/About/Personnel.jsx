@@ -7,11 +7,7 @@ import { AuroraBackground, SectionBanner } from '../../components/ThemeElements'
 // 📌 ดึงข้อมูลผู้ใช้จาก AuthContext เพื่อตรวจสอบสิทธิ์แอดมิน/อาจารย์
 import { useAuth } from '../../contexts/AuthContext';
 
-// ==========================================
-// 📌 ตั้งค่า URL ของ Google Apps Script Web App
-// ==========================================
-const GOOGLE_SHEET_API_URL = import.meta.env.VITE_PERSONNEL_API_URL || 'https://script.google.com/macros/s/AKfycbxMFtshOEkP3BK7NViM9Os6TkPUqWeoHm0TmF_zxBejVZ7GMp7HQnXsVK2Bmqm8Yuc/exec';
-
+const GOOGLE_SHEET_API_URL = import.meta.env.VITE_DEPARTMENT_API_URL;
 // ==========================================
 // 📌 Component: ระบบ Fade-in เวลาเลื่อนจอ
 // ==========================================
