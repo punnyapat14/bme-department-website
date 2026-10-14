@@ -460,7 +460,6 @@ export default function Home() {
       <div className="relative font-sans text-slate-900 bg-[#fdfcff] min-h-screen pt-24">
         <AuroraBackground />
         <MainContent />
-        <MascotGreeting /> {/* <--- เพิ่มตรงนี้ */}
       </div>
     );
   }
@@ -471,7 +470,6 @@ export default function Home() {
       <div className="h-[90vh] w-full" />
       <MainContent />
       <WelcomeMask textScale={textScale} textOpacity={textOpacity} overlayOpacity={overlayOpacity} overlayPointer={overlayPointer} />
-      <MascotGreeting /> {/* <--- เพิ่มตรงนี้ด้วย */}
     </div>
   );
 }

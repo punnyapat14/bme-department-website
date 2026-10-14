@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion'; // 📌 เพิ่ม Framer Motion
+import { motion } from 'framer-motion'; 
+import { supabase } from '../../supabaseClient'; // 📌 นำเข้า Supabase
 
-// 📌 ดึงข้อมูลจากไฟล์ Data มาใช้ทั้งหมด
-import { COURSE_LIST, GRADE_POINTS, YEARLY_PLAN } from '../../data/curriculumData';
+// 📌 กำหนดค่าเกรดคงที่ (Business Logic พื้นฐานของมหาวิทยาลัย)
+const GRADE_POINTS = { 'A': 4.0, 'B+': 3.5, 'B': 3.0, 'C+': 2.5, 'C': 2.0, 'D+': 1.5, 'D': 1.0, 'F': 0, 'Fa': 0, 'Fe': 0, 'W': null, 'S': null, 'U': null, 'ยังไม่ระบุ': null };
 
 // ==========================================
 // 📌 Component: พื้นหลังแสงออโรร่า (Theme หลัก)
@@ -32,7 +33,7 @@ const AuroraBackground = () => (
 );
 
 // ==========================================
-// 📌 Component: Section Banner (ป้ายแบนเนอร์แบ่งหมวด)
+// 📌 Component: Section Banner
 // ==========================================
 const SectionBanner = ({ line1, line2, variant = "website" }) => {
   const config = {
@@ -73,116 +74,113 @@ const SectionBanner = ({ line1, line2, variant = "website" }) => {
   );
 };
 
-
-// 📌 ฟังก์ชันสำหรับจัดเรียนวิชาเริ่มต้น (Default State) ป้องกันข้อมูลพัง
-const generateDefaultPlanState = (targetPlan) => {
-  const defaultState = [];
-  if (!YEARLY_PLAN) return defaultState; 
-
-  YEARLY_PLAN.forEach((yearItem, yIdx) => {
-    const yearNum = yIdx + 1;
-    const terms = yearItem.terms || [];
-    const visibleTerms = terms.filter(term => term.plan === 'all' || term.plan === targetPlan);
-
-    visibleTerms.forEach((term, tIdx) => {
-      const termTitle = String(term.title || '');
-      let termNum;
-      if (term.isSummer || termTitle.includes('ฤดูร้อน')) { termNum = 3; } 
-      else if (termTitle.includes('สหกิจศึกษา') && !termTitle.includes('ที่ 1') && !termTitle.includes('ที่ 2')) { termNum = 4; } 
-      else if (termTitle.includes('ที่ 1') || termTitle.includes('เทอม 1')) { termNum = 1; } 
-      else if (termTitle.includes('ที่ 2') || termTitle.includes('เทอม 2')) { termNum = 2; } 
-      else { termNum = tIdx + 1; }
-
-      const semesterId = `y${yearNum}s${termNum}`;
-      const courses = term.courses || [];
-
-      courses.forEach((c) => {
-        const courseIdStr = String(c.id || '');
-        const masterData = (COURSE_LIST || []).find(master => String(master.id) === courseIdStr);
-        const rawName = masterData ? masterData.nameTH : (c.name || '');
-        const nameTH = String(rawName).replace('*', ''); 
-
-        defaultState.push({
-          uid: `${courseIdStr}-${semesterId}-${Date.now()}-${Math.random()}`, 
-          id: courseIdStr,
-          nameTH: nameTH, 
-          nameEN: masterData ? masterData.nameEN || '' : '',
-          creditText: masterData ? masterData.creditText : c.credit, 
-          semesterId: semesterId,
-          grade: 'ยังไม่ระบุ'
-        });
-      });
-    });
-  });
-  return defaultState;
-};
-
 export default function BMEFlow() {
   const [activePlan, setActivePlan] = useState('normal'); 
-  const [myPlan, setMyPlan] = useState(() => generateDefaultPlanState('normal'));
+  const [isLoading, setIsLoading] = useState(true);
 
+  // 📌 State สำหรับเก็บข้อมูลตั้งต้นจาก Supabase
+  const [pageInfo, setPageInfo] = useState({
+    title: 'จำลองแผนการเรียน', subtitle: '', description: '', total_required_credits: 146, standard_study_years: 4, max_study_years: 8
+  });
+  const [courseMaster, setCourseMaster] = useState([]);
+  const [yearlyPlanTemplate, setYearlyPlanTemplate] = useState([]);
+
+  // 📌 State สำหรับการจำลองฝั่งผู้ใช้ (Client-side)
+  const [myPlan, setMyPlan] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetSemester, setTargetSemester] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    fetchSimulationData();
   }, []);
 
+  // เมื่อข้อมูลแม่แบบโหลดเสร็จ หรือเปลี่ยนแผน (ปกติ/สหกิจ) ให้สร้างตารางจำลองใหม่
   useEffect(() => {
-    setMyPlan(generateDefaultPlanState(activePlan));
-  }, [activePlan]);
+    if (yearlyPlanTemplate.length > 0 && courseMaster.length > 0) {
+      setMyPlan(generateDefaultPlanState(activePlan, yearlyPlanTemplate, courseMaster));
+    }
+  }, [activePlan, yearlyPlanTemplate, courseMaster]);
 
+  // 📌 ฟังก์ชันดึงข้อมูลจาก Supabase
+  const fetchSimulationData = async () => {
+    setIsLoading(true);
+    try {
+      // 1. ดึงการตั้งค่าหน้าเพจ
+      const { data: configData } = await supabase.from('simulation_config').select('*').maybeSingle();
+      if (configData) setPageInfo(configData);
+
+      // 2. ดึงข้อมูลรายวิชาทั้งหมด
+      const { data: coursesData } = await supabase.from('courses').select('*');
+      if (coursesData) setCourseMaster(coursesData);
+
+      // 3. ดึงเทมเพลตแผนการเรียน (โครงสร้างปีและเทอม)
+      const { data: yearsData } = await supabase.from('study_plan_years').select(`
+          id, year_number, sort_order,
+          study_plan_terms (
+            id, title, term_plan, is_summer, total_credits, sort_order,
+            study_plan_courses ( course_id, sort_order )
+          )
+        `).order('sort_order', { ascending: true });
+      
+      if (yearsData) setYearlyPlanTemplate(yearsData);
+
+    } catch (error) {
+      console.error("Error fetching simulation data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 📌 ฟังก์ชันจัดเรียงวิชาเริ่มต้นจากการดึงข้อมูล Database
+  const generateDefaultPlanState = (targetPlan, planData, coursesData) => {
+    const defaultState = [];
+    if (!planData || planData.length === 0) return defaultState; 
+
+    planData.forEach((yearItem) => {
+      const yearNum = yearItem.year_number;
+      const terms = yearItem.study_plan_terms || [];
+      const visibleTerms = terms.filter(term => term.term_plan === 'all' || term.term_plan === targetPlan)
+                                .sort((a, b) => a.sort_order - b.sort_order);
+
+      visibleTerms.forEach((term, tIdx) => {
+        const termTitle = String(term.title || '');
+        let termNum;
+        if (term.is_summer || termTitle.includes('ฤดูร้อน')) { termNum = 3; } 
+        else if (termTitle.includes('สหกิจศึกษา') && !termTitle.includes('ที่ 1') && !termTitle.includes('ที่ 2')) { termNum = 4; } 
+        else if (termTitle.includes('ที่ 1') || termTitle.includes('เทอม 1')) { termNum = 1; } 
+        else if (termTitle.includes('ที่ 2') || termTitle.includes('เทอม 2')) { termNum = 2; } 
+        else { termNum = tIdx + 1; }
+
+        const semesterId = `y${yearNum}s${termNum}`;
+        const coursesInTerm = term.study_plan_courses || [];
+
+        coursesInTerm.forEach((c) => {
+          const masterData = coursesData.find(master => String(master.course_id) === String(c.course_id));
+          if (!masterData) return;
+
+          const nameTH = String(masterData.name_th).replace('*', ''); 
+
+          defaultState.push({
+            uid: `${masterData.course_id}-${semesterId}-${Date.now()}-${Math.random()}`, 
+            id: masterData.course_id,
+            nameTH: nameTH, 
+            nameEN: masterData.name_en || '',
+            creditText: masterData.credit_text || '-', 
+            semesterId: semesterId,
+            grade: 'ยังไม่ระบุ'
+          });
+        });
+      });
+    });
+    return defaultState;
+  };
+
+  // 📌 ฟังก์ชันการจัดการในตารางจำลอง (เพิ่ม/ลบ/แก้/อัปเดตเกรด)
   const handleCustomDetailChange = (uid, field, value) => {
     setMyPlan(prev => prev.map(c => c.uid === uid ? { ...c, [field]: value } : c));
   };
-
-  const computedData = useMemo(() => {
-    let passedCredits = 0;
-    let totalEnrolledCredits = 0;
-    let pendingCredits = 0;
-    let qualityPoints = 0;
-    let gradedCredits = 0;
-
-    const planWithDetails = myPlan.map(instance => {
-      const courseIdStr = String(instance.id || '');
-      const masterData = (COURSE_LIST || []).find(c => String(c.id) === courseIdStr);
-      
-      const creditStr = String(instance.creditText || '0');
-      const creditNumber = parseInt(creditStr.split('(')[0].replace(/\D/g, '')) || 0;
-      
-      totalEnrolledCredits += creditNumber;
-
-      if (!instance.grade || instance.grade === 'ยังไม่ระบุ') {
-        pendingCredits += creditNumber;
-      }
-
-      const safeGradePoints = GRADE_POINTS || {};
-      const points = safeGradePoints[instance.grade];
-      if (points !== undefined && points !== null) { 
-        qualityPoints += (creditNumber * points);
-        gradedCredits += creditNumber;
-        if (points > 0) passedCredits += creditNumber; 
-      }
-
-      return {
-        ...instance,
-        credit: creditNumber,
-        prereq: masterData ? (Array.isArray(masterData.prereq) ? masterData.prereq : []) : [],
-        isEng: String(instance.nameTH || '').includes('*')
-      };
-    });
-
-    const gpax = gradedCredits > 0 ? (qualityPoints / gradedCredits).toFixed(2) : '0.00';
-    
-    let currentYear = 1;
-    if (myPlan.length > 0) {
-      const years = myPlan.map(c => parseInt(String(c.semesterId || '').replace('y', '').split('s')[0]) || 1);
-      currentYear = Math.max(...years);
-    }
-
-    return { planWithDetails, gpax, passedCredits, totalEnrolledCredits, pendingCredits, currentYear };
-  }, [myPlan]);
 
   const handleGradeChange = (uid, newGrade) => {
     setMyPlan(prev => prev.map(c => c.uid === uid ? { ...c, grade: newGrade } : c));
@@ -201,32 +199,114 @@ export default function BMEFlow() {
   };
 
   const handleAddCourse = (course) => {
-    let coursesToAdd = [{ ...course, uid: `${course.id}-${Date.now()}`, semesterId: targetSemester.id, grade: 'ยังไม่ระบุ' }];
+    let coursesToAdd = [{ 
+      ...course, 
+      uid: `${course.course_id}-${Date.now()}`, 
+      id: course.course_id,
+      nameTH: course.name_th,
+      nameEN: course.name_en,
+      creditText: course.credit_text,
+      semesterId: targetSemester.id, 
+      grade: 'ยังไม่ระบุ' 
+    }];
     setMyPlan(prev => [...prev, ...coursesToAdd]);
     setIsModalOpen(false);
   };
 
+  // 📌 คำนวณผลการเรียนรวมทั้งหมด
+  const computedData = useMemo(() => {
+    let passedCredits = 0;
+    let totalEnrolledCredits = 0;
+    let pendingCredits = 0;
+    let qualityPoints = 0;
+    let gradedCredits = 0;
+
+    const planWithDetails = myPlan.map(instance => {
+      const courseIdStr = String(instance.id || '');
+      const masterData = courseMaster.find(c => String(c.course_id) === courseIdStr);
+      
+      const creditStr = String(instance.creditText || '0');
+      const creditNumber = parseInt(creditStr.split('(')[0].replace(/\D/g, '')) || 0;
+      
+      totalEnrolledCredits += creditNumber;
+
+      if (!instance.grade || instance.grade === 'ยังไม่ระบุ') {
+        pendingCredits += creditNumber;
+      }
+
+      const points = GRADE_POINTS[instance.grade];
+      if (points !== undefined && points !== null) { 
+        qualityPoints += (creditNumber * points);
+        gradedCredits += creditNumber;
+        if (points > 0) passedCredits += creditNumber; 
+      }
+
+      return {
+        ...instance,
+        credit: creditNumber,
+        prereq: masterData?.prereq || [],
+        isEng: String(instance.nameTH || '').includes('*') || masterData?.is_eng
+      };
+    });
+
+    const gpax = gradedCredits > 0 ? (qualityPoints / gradedCredits).toFixed(2) : '0.00';
+    
+    let currentYear = 1;
+    if (myPlan.length > 0) {
+      const years = myPlan.map(c => parseInt(String(c.semesterId || '').replace('y', '').split('s')[0]) || 1);
+      currentYear = Math.max(...years);
+    }
+
+    return { planWithDetails, gpax, passedCredits, totalEnrolledCredits, pendingCredits, currentYear };
+  }, [myPlan, courseMaster]);
+
+  // 📌 ฟิลเตอร์วิชาใน Modal
   const filteredCourses = useMemo(() => {
-    if (!COURSE_LIST) return [];
-    return COURSE_LIST.filter(c => {
-      const isAlreadyInPlan = myPlan.some(p => String(p.id) === String(c.id));
+    if (!courseMaster || courseMaster.length === 0) return [];
+    return courseMaster.filter(c => {
+      // ไม่แสดงวิชาที่มีอยู่ในแผนการเรียนแล้ว
+      const isAlreadyInPlan = myPlan.some(p => String(p.id) === String(c.course_id));
       if (isAlreadyInPlan) return false;
 
       const searchLower = String(searchQuery || '').toLowerCase();
-      const idStr = String(c.id || '').toLowerCase();
-      const nameTHStr = String(c.nameTH || '').toLowerCase();
-      const nameENStr = String(c.nameEN || '').toLowerCase();
+      const idStr = String(c.course_id || '').toLowerCase();
+      const nameTHStr = String(c.name_th || '').toLowerCase();
+      const nameENStr = String(c.name_en || '').toLowerCase();
 
       return idStr.includes(searchLower) || nameTHStr.includes(searchLower) || nameENStr.includes(searchLower);
     });
-  }, [myPlan, searchQuery]);
+  }, [myPlan, searchQuery, courseMaster]);
 
-  const TOTAL_REQUIRED_CREDITS = 146;
-  const MAX_STUDY_YEARS = 8;
-  const STANDARD_STUDY_YEARS = 4;
-  const safeGradePointsKeys = Object.keys(GRADE_POINTS || {}).filter(g => g !== 'ยังไม่ระบุ');
-
+  const safeGradePointsKeys = Object.keys(GRADE_POINTS).filter(g => g !== 'ยังไม่ระบุ');
   const bentoGlass = "rounded-[2.5rem] bg-white/85 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-500 relative overflow-hidden";
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfcff]">
+        <div className="text-purple-600 font-bold animate-pulse text-lg">กำลังเตรียมระบบจำลองแผนการเรียน...</div>
+      </div>
+    );
+  }
+
+  // 📌 การจัดกลุ่มข้อมูลเพื่อ Render UI แผนการเรียน
+  // ทำการดึงจาก Template ที่โหลดมา เพื่อรักษาโครงสร้าง ปี/เทอม ให้สวยงาม
+  const getRenderStructure = () => {
+    const structure = [];
+    yearlyPlanTemplate.forEach(yearItem => {
+      const terms = yearItem.study_plan_terms || [];
+      const visibleTerms = terms.filter(t => t.term_plan === 'all' || t.term_plan === activePlan)
+                                .sort((a,b) => a.sort_order - b.sort_order);
+      
+      if (visibleTerms.length > 0) {
+        structure.push({
+          yearTitle: `ชั้นปีที่ ${yearItem.year_number}`,
+          yearNum: yearItem.year_number,
+          terms: visibleTerms
+        });
+      }
+    });
+    return structure;
+  };
 
   return (
     <div className="relative font-sans text-slate-900 bg-[#fdfcff] min-h-screen pt-16 pb-32">
@@ -237,31 +317,31 @@ export default function BMEFlow() {
         {/* ---------------- Header Section ---------------- */}
         <div className="text-center max-w-4xl mx-auto pt-2 pb-10">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
-            จำลองแผนการเรียน
+            {pageInfo.title}
           </h1>
           <p className="font-medium text-slate-600 text-lg md:text-xl leading-relaxed mx-auto max-w-2xl mb-2">
-            หลักสูตรวิศวกรรมชีวการแพทย์ ฉบับปรับปรุง พ.ศ. 2567
+            {pageInfo.subtitle}
           </p>
           <p className="text-slate-500 text-sm md:text-base">
-            ทดลองจัดแผนการเรียนเพื่อดู <span className="font-bold text-purple-700">GPAX</span> และขีดจำกัดหน่วยกิต
+            {pageInfo.description}
           </p>
         </div>
 
-        {/* ---------------- 📌 1. แผนผังการเรียน (Dashboard สรุปผล) ---------------- */}
+        {/* ---------------- 📌 1. Dashboard สรุปผล ---------------- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-12 md:mb-16">
             {/* Card 1: หน่วยกิต */}
             <div className="rounded-[1.5rem] p-6 bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-100/60 text-slate-700 shadow-sm relative overflow-hidden flex flex-col hover:shadow-md transition-shadow">
               <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-rose-200/30 blur-2xl"></div>
               <h3 className="text-xl font-black mb-4 border-b border-rose-200/60 pb-3 text-rose-600">หน่วยกิตสะสม</h3>
               <div className="flex-1 space-y-2 font-medium text-sm">
-                <div className="flex justify-between text-slate-500"><span>หน่วยกิตขั้นต่ำ</span><span className="font-bold text-slate-700">{TOTAL_REQUIRED_CREDITS}</span></div>
+                <div className="flex justify-between text-slate-500"><span>หน่วยกิตขั้นต่ำ</span><span className="font-bold text-slate-700">{pageInfo.total_required_credits}</span></div>
                 <div className="flex justify-between text-slate-500"><span>ลงทะเบียนแล้ว</span><span className="font-bold text-slate-700">{computedData.totalEnrolledCredits}</span></div>
                 <div className="flex justify-between text-slate-500"><span>สอบผ่านแล้ว</span><span className="font-bold text-emerald-600">{computedData.passedCredits}</span></div>
                 <div className="flex justify-between text-slate-500"><span>อยู่ระหว่างศึกษา</span><span className="font-bold text-slate-400">{computedData.pendingCredits}</span></div>
               </div>
               <div className="mt-6 flex justify-between items-center pt-4 border-t border-rose-200/60">
                 <span className="font-bold text-sm text-slate-700">สถานะหน่วยกิต</span>
-                {computedData.passedCredits >= TOTAL_REQUIRED_CREDITS ? (
+                {computedData.passedCredits >= pageInfo.total_required_credits ? (
                   <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-black shadow-sm">ผ่านเกณฑ์</span>
                 ) : (
                   <span className="px-3 py-1 bg-white border border-slate-200 text-slate-500 rounded-full text-xs font-black shadow-sm">ยังไม่ครบ</span>
@@ -274,13 +354,13 @@ export default function BMEFlow() {
               <div className="absolute bottom-0 right-0 -mr-4 -mb-4 w-24 h-24 rounded-full bg-blue-200/30 blur-xl"></div>
               <h3 className="text-xl font-black mb-4 border-b border-blue-200/60 pb-3 text-blue-600">ระยะเวลาศึกษา</h3>
               <div className="flex-1 space-y-2 font-medium text-sm">
-                <div className="flex justify-between text-slate-500"><span>ระยะเวลาตามหลักสูตร</span><span className="font-bold text-slate-700">{STANDARD_STUDY_YEARS} ปี</span></div>
-                <div className="flex justify-between text-slate-500"><span>ระยะเวลาสูงสุด</span><span className="font-bold text-slate-700">{MAX_STUDY_YEARS} ปี</span></div>
+                <div className="flex justify-between text-slate-500"><span>ระยะเวลาตามหลักสูตร</span><span className="font-bold text-slate-700">{pageInfo.standard_study_years} ปี</span></div>
+                <div className="flex justify-between text-slate-500"><span>ระยะเวลาสูงสุด</span><span className="font-bold text-slate-700">{pageInfo.max_study_years} ปี</span></div>
                 <div className="flex justify-between mt-4 text-lg text-slate-600"><span>ชั้นปีปัจจุบัน</span><span className="font-black text-blue-600">ปีที่ {computedData.currentYear}</span></div>
               </div>
               <div className="mt-6 flex justify-between items-center pt-4 border-t border-blue-200/60">
                 <span className="font-bold text-sm text-slate-700">สถานะระยะเวลา</span>
-                {computedData.currentYear <= MAX_STUDY_YEARS ? (
+                {computedData.currentYear <= pageInfo.max_study_years ? (
                   <span className="px-3 py-1 bg-white border border-slate-200 text-slate-500 rounded-full text-xs font-black shadow-sm">ปกติ</span>
                 ) : (
                   <span className="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-black shadow-sm">พ้นสภาพ</span>
@@ -309,44 +389,61 @@ export default function BMEFlow() {
             </div>
           </div>
 
-        {/* ---------------- 📌 2. แผนการเรียนแต่ละชั้นปี ---------------- */}
+        {/* ---------------- 📌 2. กระดานจำลองแผนการเรียน ---------------- */}
         <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
-          <div className="mt-10 flex flex-col gap-12">
-            {(YEARLY_PLAN || []).map((yearItem, yIdx) => {
-              const yearNum = yIdx + 1;
-              const terms = yearItem.terms || [];
-              const visibleTerms = terms.filter(term => term.plan === 'all' || term.plan === activePlan);
-              if (visibleTerms.length === 0) return null;
+          <div className="flex flex-col md:flex-row justify-between items-center mb-8 px-2 gap-4">
+            <h3 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-3 tracking-tight">
+              <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              กระดานแผนการเรียน
+            </h3>
+            
+            <div className="flex bg-slate-100/80 p-1.5 rounded-2xl shadow-sm border border-slate-200/60 w-full md:w-auto">
+              <button 
+                onClick={() => setActivePlan('normal')}
+                className={`flex-1 md:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${activePlan === 'normal' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                โครงการปกติ
+              </button>
+              <button 
+                onClick={() => setActivePlan('coop')}
+                className={`flex-1 md:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${activePlan === 'coop' ? 'bg-indigo-600 text-white shadow-sm border border-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                โครงการสหกิจศึกษา
+              </button>
+            </div>
+          </div>
 
+          <div className="mt-6 flex flex-col gap-12">
+            {getRenderStructure().map((yearObj, yIdx) => {
               return (
                 <div key={yIdx} className="bg-slate-50/50 p-6 md:p-8 rounded-[2rem] border border-slate-100 shadow-sm">
                   <h3 className="text-2xl font-extrabold text-slate-800 mb-8 flex items-center gap-3 border-b border-slate-200 pb-4">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white shadow-md">{yearNum}</div>
-                    {yearItem.year}
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white shadow-md">{yearObj.yearNum}</div>
+                    {yearObj.yearTitle}
                   </h3>
                   
                   <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
-                    {visibleTerms.map((term, tIdx) => {
+                    {yearObj.terms.map((term, tIdx) => {
                       const termTitle = String(term.title || '');
                       let termNum;
-                      if (term.isSummer || termTitle.includes('ฤดูร้อน')) { termNum = 3; } 
+                      if (term.is_summer || termTitle.includes('ฤดูร้อน')) { termNum = 3; } 
                       else if (termTitle.includes('สหกิจศึกษา') && !termTitle.includes('ที่ 1') && !termTitle.includes('ที่ 2')) { termNum = 4; } 
                       else if (termTitle.includes('ที่ 1') || termTitle.includes('เทอม 1')) { termNum = 1; } 
                       else if (termTitle.includes('ที่ 2') || termTitle.includes('เทอม 2')) { termNum = 2; } 
                       else { termNum = tIdx + 1; }
                       
-                      const semanticSemesterId = `y${yearNum}s${termNum}`;
+                      const semanticSemesterId = `y${yearObj.yearNum}s${termNum}`;
                       const coursesInTerm = computedData.planWithDetails.filter(c => c.semesterId === semanticSemesterId);
                       const enrolledCredits = coursesInTerm.reduce((sum, c) => sum + c.credit, 0);
 
-                      const limit = term.isSummer || termTitle.includes('ฤดูร้อน') ? 9 : 22;
+                      const limit = term.is_summer || termTitle.includes('ฤดูร้อน') ? 9 : 22;
                       const hasInternship = coursesInTerm.some(c => String(c.nameTH || '').includes('สหกิจ') || String(c.nameTH || '').includes('ฝึกงาน'));
                       
                       const isOverLimit = enrolledCredits > limit;
-                      const isUnderCredit = enrolledCredits > 0 && enrolledCredits < 9 && !term.isSummer && !termTitle.includes('ฤดูร้อน') && !hasInternship;
+                      const isUnderCredit = enrolledCredits > 0 && enrolledCredits < 9 && !term.is_summer && !termTitle.includes('ฤดูร้อน') && !hasInternship;
                       
                       return (
-                        <div key={semanticSemesterId} className={`rounded-[1.5rem] border ${isOverLimit || isUnderCredit ? 'border-rose-200 bg-rose-50/30 shadow-[0_4px_15px_rgba(244,63,94,0.05)]' : term.isSummer || termTitle.includes('ฤดูร้อน') ? 'border-dashed border-slate-300 bg-white' : 'border-slate-200 bg-white shadow-sm'} p-6 flex flex-col transition-all hover:shadow-md`}>
+                        <div key={semanticSemesterId} className={`rounded-[1.5rem] border ${isOverLimit || isUnderCredit ? 'border-rose-200 bg-rose-50/30 shadow-[0_4px_15px_rgba(244,63,94,0.05)]' : term.is_summer || termTitle.includes('ฤดูร้อน') ? 'border-dashed border-slate-300 bg-white' : 'border-slate-200 bg-white shadow-sm'} p-6 flex flex-col transition-all hover:shadow-md`}>
                           
                           <div className="flex justify-between items-center mb-5 border-b border-slate-100 pb-4">
                             <h4 className="font-extrabold text-[16px] text-slate-800 tracking-tight flex items-center gap-2">
@@ -489,26 +586,26 @@ export default function BMEFlow() {
               <div className="flex flex-col gap-3">
                 {filteredCourses.map(course => {
                   const prereqArr = Array.isArray(course.prereq) ? course.prereq : [];
-                  const isEngFlag = String(course.nameTH || '').includes('*');
+                  const isEngFlag = String(course.name_th || '').includes('*') || course.is_eng;
 
                   return (
                     <div 
-                      key={course.id} 
+                      key={course.course_id} 
                       onClick={() => handleAddCourse(course)}
                       className="bg-white p-5 rounded-[1.25rem] border border-slate-200 shadow-sm hover:border-purple-400 hover:shadow-md cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                     >
                       <div>
                         <div className="font-mono text-xs font-bold text-purple-600 mb-1.5 flex flex-wrap items-center gap-2">
-                          {course.id}
+                          {course.course_id}
                           {prereqArr.length > 0 && <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md text-[9px] border border-orange-200">มีตัวต่อ</span>}
                           {course.coreq && <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md text-[9px] border border-indigo-200">มีวิชาเรียนควบ</span>}
                           {isEngFlag && <span className="bg-slate-800 text-white px-2 py-0.5 rounded-md text-[9px] tracking-widest">ENG</span>}
                         </div>
-                        <div className="text-[15px] font-extrabold text-slate-800 leading-snug group-hover:text-purple-700 transition-colors">{String(course.nameTH || '').replace('*','')}</div>
-                        <div className="text-[12px] text-slate-500 font-medium mt-0.5">{course.nameEN}</div>
+                        <div className="text-[15px] font-extrabold text-slate-800 leading-snug group-hover:text-purple-700 transition-colors">{String(course.name_th || '').replace('*','')}</div>
+                        <div className="text-[12px] text-slate-500 font-medium mt-0.5">{course.name_en}</div>
                       </div>
                       <div className="flex items-center gap-3 self-end sm:self-auto flex-shrink-0">
-                        <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">{course.creditText || `${course.credit || 0} นก.`}</span>
+                        <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">{course.credit_text}</span>
                         <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 border border-slate-200 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 transition-all shadow-sm">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg>
                         </div>

@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createClient } from '@supabase/supabase-js';
 
 // 📌 นำเข้า Component พื้นหลังและแบนเนอร์จาก ThemeElements
 import { AuroraBackground, SectionBanner } from "../../components/ThemeElements";
-
-// 📌 ดึงข้อมูลผู้ใช้จาก AuthContext เพื่อตรวจสอบสิทธิ์แอดมิน/อาจารย์
 import { useAuth } from "../../contexts/AuthContext";
 
-const GOOGLE_SHEET_API_URL = import.meta.env.VITE_DEPARTMENT_API_URL;
+// 📌 ตั้งค่า Supabase Client
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ==========================================
 // 📌 ธีมสีสำหรับการ์ดกิจกรรมนักศึกษา
@@ -47,7 +49,7 @@ const FadeInSection = ({ children, delay = "0s", className = "" }) => {
 
 const EMPTY_FORM = {
   id: '',
-  category: 'academic', // 'academic' | 'registration' | 'activity'
+  category: 'academic',
   semester: '1/2569',
   date: '',
   title: '',
@@ -60,17 +62,28 @@ export default function AcademicCalendar() {
   const { user } = useAuth();
 
   const [items, setItems] = useState([]);
+  const [settings, setSettings] = useState({
+    header_title: 'ปฏิทินการศึกษา',
+    header_subtitle: 'กำหนดการสำคัญ ตารางการลงทะเบียนเรียน และกิจกรรมเสริมหลักสูตร',
+    warning_title: 'พบปัญหาการลงทะเบียนเรียน?',
+    warning_subtitle: 'ลืมรหัสผ่าน / ระบบขัดข้อง / ลงทะเบียนไม่ได้ / ชำระเงินไม่ผ่าน',
+    warning_text: 'นักศึกษาต้องลงทะเบียนผ่านระบบ REG ด้วยตนเอง และชำระเงินตามช่วงวัน-เวลาที่กำหนด หากพ้นกำหนดจะต้องเสียค่าปรับลงทะเบียนล่าช้าตามระเบียบมหาวิทยาลัย'
+  });
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [activeSemester, setActiveSemester] = useState('1/2569');
 
-  // State สำหรับ Modal เพิ่ม/แก้ไขข้อมูล (เฉพาะแอดมิน/อาจารย์)
+  // States สำหรับ Modal เพิ่ม/แก้ไข Event (เฉพาะแอดมิน/อาจารย์)
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
-  // 🔒 ตรวจสอบสิทธิ์: เฉพาะแอดมินหรืออาจารย์ที่ล็อกอินแล้วเท่านั้น
+  // States สำหรับแก้ไขข้อความหน้าเว็บ (Page Settings)
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({});
+
+  // 🔒 ตรวจสอบสิทธิ์
   const canManageCalendar = Boolean(
     user && (
       ['admin', 'faculty', 'teacher', 'staff', 'instructor'].includes(String(user.role || '').toLowerCase()) ||
@@ -82,141 +95,109 @@ export default function AcademicCalendar() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    fetchCalendarData();
+    fetchData();
   }, []);
 
-  // 📌 ดึงข้อมูลปฏิทินจาก Google Sheet
-  const fetchCalendarData = async () => {
+  // 📌 ดึงข้อมูลจาก Supabase
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .order('created_at', { ascending: true });
+        
+      if (eventsError) throw eventsError;
 
-      if (!GOOGLE_SHEET_API_URL || GOOGLE_SHEET_API_URL.includes('ใส่_WEB_APP_URL')) {
-        setError('กรุณาตั้งค่า Web App URL ของ Google Sheet ในไฟล์โค้ดก่อนใช้งาน');
-        setLoading(false);
-        return;
-      }
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('page_settings')
+        .select('*')
+        .eq('id', 1)
+        .single();
+        
+      if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
 
-      const sep = GOOGLE_SHEET_API_URL.includes('?') ? '&' : '?';
-      const response = await fetch(`${GOOGLE_SHEET_API_URL}${sep}sheet=Calendar`);
-      if (!response.ok) throw new Error('ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
+      setItems(eventsData || []);
+      if (settingsData) setSettings(settingsData);
 
-      const result = await response.json();
-      const rows = Array.isArray(result) ? result : (result.data || []);
-      setItems(rows);
-
-      // ตั้งค่าเทอมเริ่มต้นตามข้อมูลที่มีใน Sheet
-      const semestersInSheet = [...new Set(rows.map(r => String(r.semester || '').trim()).filter(Boolean))];
-      if (semestersInSheet.length > 0 && !semestersInSheet.includes(activeSemester)) {
-        setActiveSemester(semestersInSheet[0]);
+      // ตั้งค่าเทอมเริ่มต้นตามข้อมูลที่มี
+      const semestersInDb = [...new Set((eventsData || []).map(r => r.semester).filter(Boolean).filter(s => s !== '-'))];
+      if (semestersInDb.length > 0 && !semestersInDb.includes(activeSemester)) {
+        setActiveSemester(semestersInDb[0]);
       }
     } catch (err) {
-      console.error('Fetch calendar error:', err);
-      setError('ไม่สามารถโหลดข้อมูลปฏิทินการศึกษาได้ในขณะนี้');
+      console.error('Fetch data error:', err);
+      // alert('ไม่สามารถโหลดข้อมูลจากฐานข้อมูลได้'); // ปิด alert ไว้เพื่อไม่ให้รบกวนผู้ใช้
     } finally {
       setLoading(false);
     }
   };
 
-  // 📌 แยกหมวดหมู่ข้อมูลจากรายการทั้งหมด
   const semesters = useMemo(() => {
-    const fromData = [...new Set(items.filter(i => i.category !== 'activity').map(i => String(i.semester || '').trim()).filter(Boolean))];
+    const fromData = [...new Set(items.filter(i => i.category !== 'activity' && i.semester !== '-').map(i => i.semester).filter(Boolean))];
     return fromData.length > 0 ? fromData : ['1/2569', '2/2569'];
   }, [items]);
 
-  const academicList = useMemo(
-    () => items.filter(i => String(i.category).toLowerCase() === 'academic' && String(i.semester).trim() === activeSemester),
-    [items, activeSemester]
-  );
+  const academicList = useMemo(() => items.filter(i => i.category === 'academic' && i.semester === activeSemester), [items, activeSemester]);
+  const registrationList = useMemo(() => items.filter(i => i.category === 'registration' && i.semester === activeSemester), [items, activeSemester]);
+  const activitiesList = useMemo(() => items.filter(i => i.category === 'activity'), [items]);
 
-  const registrationList = useMemo(
-    () => items.filter(i => String(i.category).toLowerCase() === 'registration' && String(i.semester).trim() === activeSemester),
-    [items, activeSemester]
-  );
-
-  const activitiesList = useMemo(
-    () => items.filter(i => String(i.category).toLowerCase() === 'activity'),
-    [items]
-  );
-
-  // 📌 เปิด Modal สำหรับเพิ่มข้อมูลใหม่
-  const openCreateModal = (defaultCategory = 'academic') => {
-    setEditingItem(null);
-    setFormData({ ...EMPTY_FORM, category: defaultCategory, semester: activeSemester });
-    setShowModal(true);
-  };
-
-  // 📌 เปิด Modal สำหรับแก้ไขรายการเดิม
-  const openEditModal = (item) => {
-    setEditingItem(item);
-    setFormData({
-      id: item.id || '',
-      category: item.category || 'academic',
-      semester: item.semester || activeSemester,
-      date: item.date || '',
-      title: item.title || '',
-      shortDate: item.shortDate || '',
-      activityType: item.activityType || 'กิจกรรมสาขาวิชา',
-      theme: item.theme || 'purple'
-    });
-    setShowModal(true);
-  };
-
-  // 📌 บันทึกข้อมูล (เพิ่มใหม่ หรือ แก้ไข) ลง Google Sheet
-  const handleSave = async (e) => {
+  // 📌 จัดการข้อมูลกำหนดการ (Events) ลง Supabase
+  const handleSaveEvent = async (e) => {
     e.preventDefault();
     if (!canManageCalendar) return;
-    if (!formData.date.trim() || !formData.title.trim()) {
-      return alert('กรุณากรอกวัน/เดือน/ปี และรายละเอียดให้ครบถ้วน');
-    }
-
+    setSubmitting(true);
+    
     try {
-      setSubmitting(true);
-      const action = editingItem ? 'update' : 'create';
-      await fetch(GOOGLE_SHEET_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          sheet: 'Calendar',
-          action,
-          data: {
-            ...formData,
-            id: editingItem ? editingItem.id : Date.now().toString()
-          }
-        })
-      });
+      const payload = {
+        category: formData.category,
+        semester: formData.category !== 'activity' ? formData.semester : '-',
+        date: formData.date,
+        title: formData.title,
+        shortDate: formData.category === 'activity' ? formData.shortDate : null,
+        activityType: formData.category === 'activity' ? formData.activityType : null,
+        theme: formData.category === 'activity' ? formData.theme : null
+      };
+
+      if (editingItem) {
+        await supabase.from('calendar_events').update(payload).eq('id', editingItem.id);
+      } else {
+        await supabase.from('calendar_events').insert([payload]);
+      }
 
       setShowModal(false);
-      setEditingItem(null);
-      setFormData(EMPTY_FORM);
-      await fetchCalendarData();
-    } catch (err) {
-      console.error('Save calendar error:', err);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      fetchData();
+    } catch (error) {
+      console.error(error);
+      alert('เกิดข้อผิดพลาดในการบันทึก');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // 📌 ลบรายการออกจาก Google Sheet
-  const handleDelete = async (item) => {
-    if (!canManageCalendar) return;
-    if (!window.confirm(`ยืนยันการลบรายการ "${item.title}" ?`)) return;
-
+  const handleDeleteEvent = async (id) => {
+    if (!window.confirm('ยืนยันการลบรายการนี้?')) return;
     try {
-      await fetch(GOOGLE_SHEET_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          sheet: 'Calendar',
-          action: 'delete',
-          id: item.id
-        })
-      });
-      await fetchCalendarData();
-    } catch (err) {
-      console.error('Delete calendar error:', err);
-      alert('ไม่สามารถลบรายการได้');
+      await supabase.from('calendar_events').delete().eq('id', id);
+      fetchData();
+    } catch (error) {
+      alert('ลบข้อมูลไม่สำเร็จ');
+    }
+  };
+
+  // 📌 จัดการข้อความบนหน้าเว็บ (Settings) ลง Supabase
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    if (!canManageCalendar) return;
+    setSubmitting(true);
+    try {
+      await supabase.from('page_settings').upsert({ id: 1, ...settingsForm });
+      setSettings(settingsForm);
+      setShowSettingsModal(false);
+    } catch (error) {
+      alert('บันทึกข้อความหน้าเว็บไม่สำเร็จ');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -232,23 +213,29 @@ export default function AcademicCalendar() {
         <FadeInSection delay="0.1s">
           <div className="text-center max-w-4xl mx-auto pt-2 pb-10">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
-              ปฏิทินการศึกษา
+              {settings.header_title}
             </h1>
             <p className="font-medium text-slate-600 text-lg md:text-xl leading-relaxed mx-auto max-w-2xl">
-              กำหนดการสำคัญ ตารางการลงทะเบียนเรียน และกิจกรรมเสริมหลักสูตร
+              {settings.header_subtitle}
             </p>
 
             {/* 🔒 ปุ่มจัดการปฏิทิน (เฉพาะแอดมิน/อาจารย์ที่ล็อกอินแล้ว) */}
             {canManageCalendar && (
               <div className="flex flex-wrap justify-center gap-3 mt-6">
                 <button
-                  onClick={() => openCreateModal('academic')}
-                  className="px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-slate-900 text-white hover:bg-purple-700 shadow-md transition-all flex items-center gap-2 hover:-translate-y-0.5"
+                  onClick={() => { setSettingsForm(settings); setShowSettingsModal(true); }}
+                  className="px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-amber-500 text-white hover:bg-amber-600 shadow-md transition-all flex items-center gap-2 hover:-translate-y-0.5"
                 >
-                  + เพิ่มกำหนดการวิชาการ / ลงทะเบียน
+                  ✏️ แก้ไขข้อความหน้าเว็บ
                 </button>
                 <button
-                  onClick={() => openCreateModal('activity')}
+                  onClick={() => { setEditingItem(null); setFormData({ ...EMPTY_FORM, category: 'academic', semester: activeSemester }); setShowModal(true); }}
+                  className="px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-slate-900 text-white hover:bg-purple-700 shadow-md transition-all flex items-center gap-2 hover:-translate-y-0.5"
+                >
+                  + เพิ่มกำหนดการวิชาการ/ลงทะเบียน
+                </button>
+                <button
+                  onClick={() => { setEditingItem(null); setFormData({ ...EMPTY_FORM, category: 'activity' }); setShowModal(true); }}
                   className="px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 shadow-md transition-all flex items-center gap-2 hover:-translate-y-0.5"
                 >
                   + เพิ่มกิจกรรมนักศึกษา
@@ -257,13 +244,6 @@ export default function AcademicCalendar() {
             )}
           </div>
         </FadeInSection>
-
-        {/* ---------------- สถานะ Error ---------------- */}
-        {!loading && error && (
-          <div className="max-w-2xl mx-auto mb-12 p-6 rounded-3xl bg-amber-50 border border-amber-200 text-center">
-            <p className="font-bold text-amber-800">{error}</p>
-          </div>
-        )}
 
         {/* ---------------- 📌 1. ปฏิทินการศึกษา (วิชาการ & ลงทะเบียน) ---------------- */}
         <FadeInSection delay="0.2s">
@@ -335,19 +315,17 @@ export default function AcademicCalendar() {
                           <tbody className="divide-y divide-slate-100/80">
                             {academicList.length === 0 ? (
                               <tr>
-                                <td colSpan={canManageCalendar ? 3 : 2} className="py-8 text-center text-slate-400 font-medium">
-                                  ยังไม่มีกำหนดการทางวิชาการในภาคเรียนนี้
-                                </td>
+                                <td colSpan={canManageCalendar ? 3 : 2} className="py-8 text-center text-slate-400 font-medium">ยังไม่มีกำหนดการในภาคเรียนนี้</td>
                               </tr>
                             ) : (
-                              academicList.map((item, index) => (
-                                <tr key={item.id || index} className="hover:bg-white transition-colors duration-200">
+                              academicList.map((item) => (
+                                <tr key={item.id} className="hover:bg-white transition-colors duration-200">
                                   <td className="py-3.5 px-5 font-semibold text-slate-800 leading-snug">{item.date}</td>
                                   <td className="py-3.5 px-5 text-slate-600 font-medium leading-relaxed">{item.title}</td>
                                   {canManageCalendar && (
                                     <td className="py-3.5 px-3 text-right whitespace-nowrap">
-                                      <button onClick={() => openEditModal(item)} className="text-xs font-bold text-purple-600 hover:text-purple-800 mr-2">แก้ไข</button>
-                                      <button onClick={() => handleDelete(item)} className="text-xs font-bold text-rose-500 hover:text-rose-700">ลบ</button>
+                                      <button onClick={() => { setEditingItem(item); setFormData(item); setShowModal(true); }} className="text-xs font-bold text-purple-600 hover:text-purple-800 mr-2">แก้ไข</button>
+                                      <button onClick={() => handleDeleteEvent(item.id)} className="text-xs font-bold text-rose-500 hover:text-rose-700">ลบ</button>
                                     </td>
                                   )}
                                 </tr>
@@ -383,19 +361,17 @@ export default function AcademicCalendar() {
                           <tbody className="divide-y divide-slate-100/80">
                             {registrationList.length === 0 ? (
                               <tr>
-                                <td colSpan={canManageCalendar ? 3 : 2} className="py-8 text-center text-slate-400 font-medium">
-                                  ยังไม่มีกำหนดการลงทะเบียนในภาคเรียนนี้
-                                </td>
+                                <td colSpan={canManageCalendar ? 3 : 2} className="py-8 text-center text-slate-400 font-medium">ยังไม่มีกำหนดการในภาคเรียนนี้</td>
                               </tr>
                             ) : (
-                              registrationList.map((item, index) => (
-                                <tr key={item.id || index} className="hover:bg-white transition-colors duration-200">
+                              registrationList.map((item) => (
+                                <tr key={item.id} className="hover:bg-white transition-colors duration-200">
                                   <td className="py-3.5 px-5 font-bold text-indigo-600 leading-snug">{item.date}</td>
                                   <td className="py-3.5 px-5 text-slate-700 font-medium leading-relaxed">{item.title}</td>
                                   {canManageCalendar && (
                                     <td className="py-3.5 px-3 text-right whitespace-nowrap">
-                                      <button onClick={() => openEditModal(item)} className="text-xs font-bold text-purple-600 hover:text-purple-800 mr-2">แก้ไข</button>
-                                      <button onClick={() => handleDelete(item)} className="text-xs font-bold text-rose-500 hover:text-rose-700">ลบ</button>
+                                      <button onClick={() => { setEditingItem(item); setFormData(item); setShowModal(true); }} className="text-xs font-bold text-purple-600 hover:text-purple-800 mr-2">แก้ไข</button>
+                                      <button onClick={() => handleDeleteEvent(item.id)} className="text-xs font-bold text-rose-500 hover:text-rose-700">ลบ</button>
                                     </td>
                                   )}
                                 </tr>
@@ -414,7 +390,7 @@ export default function AcademicCalendar() {
                       <div>
                         <p className="text-sm font-bold text-amber-800 mb-1">ข้อควรระวังในการลงทะเบียน</p>
                         <p className="text-[13px] text-amber-700/80 leading-relaxed font-medium">
-                          นักศึกษาต้องลงทะเบียนผ่านระบบ REG ด้วยตนเอง และชำระเงินตามช่วงวัน-เวลาที่กำหนด <strong className="text-amber-800">หากพ้นกำหนดจะต้องเสียค่าปรับลงทะเบียนล่าช้าตามระเบียบมหาวิทยาลัย</strong>
+                          {settings.warning_text}
                         </p>
                       </div>
                     </div>
@@ -430,8 +406,8 @@ export default function AcademicCalendar() {
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243-2.829a4 4 0 115.656 5.656L6.343 21H3v-3.343l7.071-7.071z"></path></svg>
                 </div>
                 <div>
-                  <h3 className="text-[16px] font-extrabold text-slate-800 mb-1">พบปัญหาการลงทะเบียนเรียน?</h3>
-                  <p className="text-[13px] text-slate-500 font-medium">ลืมรหัสผ่าน / ระบบขัดข้อง / ลงทะเบียนไม่ได้ / ชำระเงินไม่ผ่าน</p>
+                  <h3 className="text-[16px] font-extrabold text-slate-800 mb-1">{settings.warning_title}</h3>
+                  <p className="text-[13px] text-slate-500 font-medium">{settings.warning_subtitle}</p>
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
@@ -469,11 +445,11 @@ export default function AcademicCalendar() {
               <p className="text-center text-slate-400 py-10 font-medium">ยังไม่มีข้อมูลกิจกรรมนักศึกษาในฐานข้อมูล</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {activitiesList.map((act, idx) => {
+                {activitiesList.map((act) => {
                   const themeObj = ACTIVITY_THEMES[act.theme] || ACTIVITY_THEMES.purple;
                   return (
                     <motion.div
-                      key={act.id || idx}
+                      key={act.id}
                       whileHover={{ y: -5 }}
                       className="bg-white border border-slate-100 rounded-[1.5rem] p-6 shadow-sm hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] transition-all flex items-start gap-4 group relative"
                     >
@@ -493,8 +469,12 @@ export default function AcademicCalendar() {
 
                         {canManageCalendar && (
                           <div className="flex gap-3 mt-3 pt-2 border-t border-slate-100">
-                            <button onClick={() => openEditModal(act)} className="text-xs font-bold text-purple-600 hover:text-purple-800">แก้ไข</button>
-                            <button onClick={() => handleDelete(act)} className="text-xs font-bold text-rose-500 hover:text-rose-700">ลบ</button>
+                            <button onClick={() => { setEditingItem(act); setFormData({
+                              id: act.id, category: act.category, semester: act.semester,
+                              date: act.date, title: act.title, shortDate: act.shortDate || '',
+                              activityType: act.activityType || 'กิจกรรมสาขาวิชา', theme: act.theme || 'purple'
+                            }); setShowModal(true); }} className="text-xs font-bold text-purple-600 hover:text-purple-800">แก้ไข</button>
+                            <button onClick={() => handleDeleteEvent(act.id)} className="text-xs font-bold text-rose-500 hover:text-rose-700">ลบ</button>
                           </div>
                         )}
                       </div>
@@ -539,128 +519,95 @@ export default function AcademicCalendar() {
 
       </div>
 
-      {/* ---------------- 🔒 Modal เพิ่ม/แก้ไขกำหนดการ (เฉพาะแอดมิน/อาจารย์) ---------------- */}
+      {/* ================= MODALS ================= */}
+      
+      {/* 1. Modal จัดการข้อความหน้าเว็บ (Page Settings) */}
+      <AnimatePresence>
+        {canManageCalendar && showSettingsModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSettingsModal(false)} />
+            <motion.form onSubmit={handleSaveSettings} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-xl rounded-[2rem] p-8 shadow-2xl border border-slate-100 space-y-4">
+              <h3 className="text-xl font-extrabold text-slate-900 border-b pb-4">แก้ไขข้อความบนหน้าเว็บ</h3>
+              <div>
+                <label className="text-xs font-bold text-slate-600">หัวข้อหลัก</label>
+                <input type="text" value={settingsForm.header_title} onChange={e => setSettingsForm({...settingsForm, header_title: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600">คำบรรยายหัวข้อ</label>
+                <input type="text" value={settingsForm.header_subtitle} onChange={e => setSettingsForm({...settingsForm, header_subtitle: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600">หัวข้อติดต่อเมื่อมีปัญหา</label>
+                <input type="text" value={settingsForm.warning_title} onChange={e => setSettingsForm({...settingsForm, warning_title: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600">รายละเอียดช่องทางติดต่อ</label>
+                <input type="text" value={settingsForm.warning_subtitle} onChange={e => setSettingsForm({...settingsForm, warning_subtitle: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600">ข้อความแจ้งเตือนสีเหลือง (ข้อควรระวัง)</label>
+                <textarea value={settingsForm.warning_text} onChange={e => setSettingsForm({...settingsForm, warning_text: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" rows={3}></textarea>
+              </div>
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                <button type="button" onClick={() => setShowSettingsModal(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">ยกเลิก</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-full text-sm font-bold text-white bg-purple-600 hover:bg-purple-700">{submitting ? 'กำลังบันทึก...' : 'บันทึกข้อความ'}</button>
+              </div>
+            </motion.form>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 2. Modal จัดการ Event */}
       <AnimatePresence>
         {canManageCalendar && showModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-              onClick={() => setShowModal(false)}
-            />
-            <motion.form
-              onSubmit={handleSave}
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative z-10 bg-white w-full max-w-lg rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100 space-y-4"
-            >
-              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                <h3 className="text-xl font-extrabold text-slate-900">
-                  {editingItem ? 'แก้ไขกำหนดการ' : 'เพิ่มกำหนดการใหม่'}
-                </h3>
-                <button type="button" onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-700 font-bold text-xl">✕</button>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            <motion.form onSubmit={handleSaveEvent} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-lg rounded-[2rem] p-8 shadow-2xl border border-slate-100 space-y-4">
+              <h3 className="text-xl font-extrabold text-slate-900 border-b pb-4">{editingItem ? 'แก้ไขข้อมูล' : 'เพิ่มข้อมูลใหม่'}</h3>
+              <div>
+                <label className="text-xs font-bold text-slate-600">ประเภทข้อมูล</label>
+                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl">
+                  <option value="academic">กำหนดการทางวิชาการ</option>
+                  <option value="registration">กำหนดการลงทะเบียน</option>
+                  <option value="activity">ปฏิทินกิจกรรม</option>
+                </select>
               </div>
-
-              <div className="space-y-4">
+              {formData.category !== 'activity' && (
                 <div>
-                  <label className="text-xs font-bold text-slate-600">ประเภทข้อมูล</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
-                  >
-                    <option value="academic">กำหนดการทางวิชาการ</option>
-                    <option value="registration">กำหนดการลงทะเบียนเรียน</option>
-                    <option value="activity">ปฏิทินกิจกรรมนักศึกษา</option>
-                  </select>
+                  <label className="text-xs font-bold text-slate-600">เทอม (เช่น 1/2569)</label>
+                  <input type="text" value={formData.semester} onChange={e => setFormData({...formData, semester: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" required />
                 </div>
-
-                {formData.category !== 'activity' && (
+              )}
+              <div>
+                <label className="text-xs font-bold text-slate-600">วัน/เดือน/ปี</label>
+                <input type="text" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" required />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600">รายละเอียด / ชื่อกิจกรรม</label>
+                <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" required />
+              </div>
+              
+              {formData.category === 'activity' && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-600">ภาคการศึกษา (เช่น 1/2569, 2/2569)</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.semester}
-                      onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                      placeholder="เช่น 1/2569"
-                      className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
-                    />
+                    <label className="text-xs font-bold text-slate-600">เดือนย่อ</label>
+                    <input type="text" value={formData.shortDate} onChange={e => setFormData({...formData, shortDate: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" placeholder="เช่น ส.ค." />
                   </div>
-                )}
-
-                <div>
-                  <label className="text-xs font-bold text-slate-600">วัน/เดือน/ปี *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    placeholder="เช่น 8 - 15 มิ.ย. 2569 หรือ 15 สิงหาคม 2569"
-                    className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-600">
-                    {formData.category === 'registration' ? 'กลุ่มนักศึกษา *' : 'ชื่อกิจกรรม / รายละเอียด *'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder={formData.category === 'registration' ? 'เช่น นักศึกษาชั้นปีที่ 2' : 'เช่น เปิดภาคการศึกษาและเริ่มเรียน'}
-                    className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
-                  />
-                </div>
-
-                {formData.category === 'activity' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-slate-600">เดือนย่อ</label>
-                      <input
-                        type="text"
-                        value={formData.shortDate}
-                        onChange={(e) => setFormData({ ...formData, shortDate: e.target.value })}
-                        placeholder="เช่น ส.ค."
-                        className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-600">หมวดกิจกรรม</label>
-                      <input
-                        type="text"
-                        value={formData.activityType}
-                        onChange={(e) => setFormData({ ...formData, activityType: e.target.value })}
-                        placeholder="เช่น กิจกรรมสาขาวิชา"
-                        className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-600">โทนสีไอคอน</label>
-                      <select
-                        value={formData.theme}
-                        onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-                        className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
-                      >
-                        {Object.entries(ACTIVITY_THEMES).map(([key, val]) => (
-                          <option key={key} value={key}>{val.label}</option>
-                        ))}
-                      </select>
-                    </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600">หมวดกิจกรรม</label>
+                    <input type="text" value={formData.activityType} onChange={e => setFormData({...formData, activityType: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl" placeholder="เช่น กิจกรรมสาขาวิชา" />
                   </div>
-                )}
-              </div>
-
+                  <div>
+                    <label className="text-xs font-bold text-slate-600">สีธีม</label>
+                    <select value={formData.theme} onChange={e => setFormData({...formData, theme: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-xl">
+                      {Object.entries(ACTIVITY_THEMES).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">ยกเลิก</button>
-                <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-purple-700 hover:bg-purple-800 disabled:opacity-50">
-                  {submitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
-                </button>
+                <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-full text-sm font-bold text-white bg-purple-700 hover:bg-purple-800">{submitting ? 'กำลังบันทึก...' : 'บันทึก'}</button>
               </div>
             </motion.form>
           </div>

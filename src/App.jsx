@@ -80,7 +80,6 @@ export default function App() {
                 {/* --- หมวดหมู่ศิษย์เก่า (Alumni) --- */}
                 <Route path="/alumni" element={<Navigate to="/alumni/relations" replace />} />
                 <Route path="/alumni/database" element={<Directory />} />
-                <Route path="/alumni/relations" element={<AlumniRelations />} />
 
                 {/* --- หมวดหมู่อื่นๆ --- */}
                 <Route path="/events" element={<Events />} />

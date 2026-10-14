@@ -1,20 +1,110 @@
 import React, { useEffect, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { motion } from 'framer-motion';
-import bmeFlowImage from "../../assets/bme_flow.png";
+import { supabase } from "../../supabaseClient";
 
-// 📌 ดึงข้อมูลจากไฟล์ Data (ดึง COURSE_LIST มาเพื่อหาข้อมูลตัวต่อและชื่อภาษาอังกฤษ)
-import { CURRICULUM_CATEGORIES, YEARLY_PLAN, COURSE_LIST } from '../../data/curriculumData';
-
-// 📌 นำเข้า Component พื้นหลังและแบนเนอร์จาก ThemeElements
 import { AuroraBackground, SectionBanner } from "../../components/ThemeElements";
+import bmeFlowImage from "../../assets/bme_flow.png"; // ใช้เป็น fallback
 
 export default function Curriculum() {
   const [activePlan, setActivePlan] = useState('normal'); 
+  const [isLoading, setIsLoading] = useState(true);
+
+  // State เก็บข้อมูลที่ดึงจาก Supabase
+  const [pageInfo, setPageInfo] = useState({});
+  const [courseMaster, setCourseMaster] = useState({});
+  const [studyPlan, setStudyPlan] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    fetchCurriculumData();
   }, []);
+
+  const fetchCurriculumData = async () => {
+    setIsLoading(true);
+    try {
+      // 1. ดึงข้อมูลเพจ
+      const { data: infoData } = await supabase.from('curriculum_info').select('*').maybeSingle();
+      if (infoData) setPageInfo(infoData);
+
+      // 2. ดึงข้อมูลรายวิชาทำเป็น Dictionary
+      const { data: coursesData } = await supabase.from('courses').select('*');
+      const coursesDict = {};
+      if (coursesData) {
+        coursesData.forEach(c => {
+          coursesDict[c.course_id] = {
+            id: c.course_id,
+            nameTH: c.name_th,
+            nameEN: c.name_en,
+            creditText: c.credit_text,
+            isEng: c.is_eng,
+            prereq: c.prereq || [],
+            coreq: c.coreq
+          };
+        });
+        setCourseMaster(coursesDict);
+      }
+
+      // 3. ดึงแผนการเรียน
+      const { data: yearsData } = await supabase.from('study_plan_years').select(`
+          id, year_number, sort_order,
+          study_plan_terms (
+            id, title, term_plan, is_summer, total_credits, sort_order,
+            study_plan_courses ( course_id, sort_order )
+          )
+        `).order('sort_order', { ascending: true });
+      
+      if (yearsData) {
+        const formattedPlan = yearsData.map(year => ({
+          year: `ชั้นปีที่ ${year.year_number}`,
+          terms: year.study_plan_terms
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(term => ({
+              title: term.title,
+              plan: term.term_plan,
+              isSummer: term.is_summer,
+              totalCredits: term.total_credits,
+              courses: term.study_plan_courses
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map(c => ({ id: c.course_id }))
+            }))
+        }));
+        setStudyPlan(formattedPlan);
+      }
+
+      // 4. ดึงหมวดหมู่วิชา
+      const { data: catData } = await supabase.from('curriculum_categories').select(`
+          id, title, total_credits, color_theme, sort_order,
+          curriculum_subcategories (
+            id, title, description, sort_order,
+            curriculum_subcategory_courses ( course_id, sort_order )
+          )
+        `).order('sort_order', { ascending: true });
+
+      if (catData) {
+        const formattedCategories = catData.map(cat => ({
+          id: cat.id,
+          title: cat.title,
+          totalCredits: cat.total_credits,
+          color: cat.color_theme,
+          subCategories: cat.curriculum_subcategories
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(sub => ({
+              title: sub.title,
+              description: sub.description,
+              courses: sub.curriculum_subcategory_courses
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map(c => ({ id: c.course_id }))
+            }))
+        }));
+        setCategories(formattedCategories);
+      }
+    } catch (error) {
+      console.error("Error fetching curriculum data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getColorClasses = (colorName) => {
     switch(colorName) {
@@ -38,21 +128,21 @@ export default function Curriculum() {
     }
   };
 
-  // 📌 ฟังก์ชันสำหรับดึงข้อมูลเชิงลึกของวิชาจาก COURSE_LIST
-  const getFullCourseInfo = (courseId, fallbackName, fallbackCredit) => {
-    const fullInfo = COURSE_LIST.find(c => c.id === courseId);
-    return {
-      id: courseId,
-      nameTH: fullInfo ? fullInfo.nameTH : fallbackName.replace('*', ''),
-      nameEN: fullInfo ? fullInfo.nameEN : '',
-      creditText: fullInfo ? fullInfo.creditText : fallbackCredit,
-      prereq: fullInfo ? fullInfo.prereq : [],
-      coreq: fullInfo ? fullInfo.coreq : null,
-      isEng: fullInfo ? fullInfo.isEng : fallbackName.includes('*')
+  const getFullCourseInfo = (courseId) => {
+    return courseMaster[courseId] || {
+      id: courseId, nameTH: 'วิชาเลือก / กำลังอัปเดตข้อมูล', nameEN: '', creditText: '-', prereq: [], coreq: null, isEng: false
     };
   };
 
   const bentoGlass = "rounded-[2.5rem] bg-white/85 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-500 relative overflow-hidden";
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfcff]">
+        <div className="text-purple-600 font-bold animate-pulse text-lg">กำลังโหลดข้อมูลหลักสูตร...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative font-sans text-slate-900 bg-[#fdfcff] min-h-screen pt-16 pb-32">
@@ -66,13 +156,13 @@ export default function Curriculum() {
             Curriculum Map
           </span>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
-            แผนผังและโครงสร้างหลักสูตร
+            {pageInfo.title || "แผนผังและโครงสร้างหลักสูตร"}
           </h1>
           <p className="font-medium text-slate-600 text-lg md:text-xl leading-relaxed mx-auto max-w-2xl mb-3">
-            หลักสูตรวิศวกรรมศาสตรบัณฑิต สาขาวิชาวิศวกรรมชีวการแพทย์ (ฉบับปรับปรุง พ.ศ. 2567)
+            {pageInfo.subtitle || "หลักสูตรวิศวกรรมศาสตรบัณฑิต สาขาวิชาวิศวกรรมชีวการแพทย์"}
           </p>
           <p className="font-medium text-slate-600 text-sm md:text-base leading-relaxed mx-auto mb-8">
-            หน่วยกิตรวมตลอดหลักสูตร: <span className="font-bold text-purple-700">146 หน่วยกิต</span>
+            หน่วยกิตรวมตลอดหลักสูตร: <span className="font-bold text-purple-700">{pageInfo.total_credits || 146} หน่วยกิต</span>
           </p>
           
           <div className="flex justify-center">
@@ -83,7 +173,7 @@ export default function Curriculum() {
           </div>
         </div>
 
-        {/* ---------------- 📌 1. แผนผังการเรียน (Image Viewer with Smooth Zoom) ---------------- */}
+        {/* ---------------- 1. แผนผังการเรียน ---------------- */}
         <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
           <SectionBanner text="แผนผังการเรียน" variant="exam" />
 
@@ -92,36 +182,20 @@ export default function Curriculum() {
               <svg className="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
               BME Flowchart
             </h3>
-            <div className="mt-3 md:mt-0 text-xs font-medium text-slate-500 flex items-center gap-2 bg-slate-50/80 px-3 py-1.5 rounded-lg border border-slate-200/60">
-              <svg className="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
-              ใช้ Scroll เพื่อซูมอย่างสมดุล หรือคลิกค้างเพื่อลากเลื่อน
-            </div>
           </div>
           
           <div className="w-full rounded-[1.5rem] overflow-hidden border-2 border-slate-100 bg-slate-50 relative group">
-            <TransformWrapper 
-              initialScale={1} 
-              minScale={0.8} 
-              maxScale={3} 
-              wheel={{ step: 0.05, smoothStep: 0.005 }} 
-              centerOnInit={true}
-            >
+            <TransformWrapper initialScale={1} minScale={0.8} maxScale={3} wheel={{ step: 0.05, smoothStep: 0.005 }} centerOnInit={true}>
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
                   <div className="absolute bottom-6 right-6 z-50 flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xl px-3 py-2 rounded-2xl opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button onClick={() => zoomIn(0.2)} className="w-9 h-9 bg-slate-100 hover:bg-purple-600 hover:text-white rounded-xl flex items-center justify-center text-slate-700 font-bold transition-all text-sm">+</button>
-                    <button onClick={() => zoomOut(0.2)} className="w-9 h-9 bg-slate-100 hover:bg-purple-600 hover:text-white rounded-xl flex items-center justify-center text-slate-700 font-bold transition-all text-sm">-</button>
+                    <button onClick={() => zoomIn(0.2)} className="w-9 h-9 bg-slate-100 hover:bg-purple-600 hover:text-white rounded-xl flex items-center justify-center font-bold transition-all text-sm">+</button>
+                    <button onClick={() => zoomOut(0.2)} className="w-9 h-9 bg-slate-100 hover:bg-purple-600 hover:text-white rounded-xl flex items-center justify-center font-bold transition-all text-sm">-</button>
                     <div className="w-px h-6 bg-slate-200 mx-1"></div>
-                    <button onClick={() => resetTransform()} className="px-3 h-9 bg-slate-100 hover:bg-slate-800 hover:text-white rounded-xl flex items-center justify-center text-slate-700 text-xs font-bold transition-all">Reset</button>
+                    <button onClick={() => resetTransform()} className="px-3 h-9 bg-slate-100 hover:bg-slate-800 hover:text-white rounded-xl flex items-center justify-center text-xs font-bold transition-all">Reset</button>
                   </div>
-
                   <TransformComponent wrapperClass="!w-full !h-auto min-h-[500px] cursor-grab active:cursor-grabbing flex items-center justify-center">
-                    <img 
-                      src={bmeFlowImage} 
-                      alt="BME Curriculum Flowchart" 
-                      className="w-full h-auto object-contain max-h-[850px] select-none mix-blend-multiply" 
-                      draggable="false" 
-                    />
+                    <img src={pageInfo.flowchart_url || bmeFlowImage} alt="BME Curriculum Flowchart" className="w-full h-auto object-contain max-h-[850px] select-none mix-blend-multiply" draggable="false" />
                   </TransformComponent>
                 </>
               )}
@@ -129,7 +203,7 @@ export default function Curriculum() {
           </div>
         </div>
 
-        {/* ---------------- 📌 2. แผนการศึกษาแยกตามชั้นปี ---------------- */}
+        {/* ---------------- 2. แผนการศึกษา ---------------- */}
         <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
           <SectionBanner text="แผนการเรียนแต่ละชั้นปี" variant="calendar" />
 
@@ -156,7 +230,7 @@ export default function Curriculum() {
           </div>
 
           <div className="flex flex-col gap-10">
-            {YEARLY_PLAN.map((yearItem, yIdx) => {
+            {studyPlan.map((yearItem, yIdx) => {
               const visibleTerms = yearItem.terms.filter(term => term.plan === 'all' || term.plan === activePlan);
               if (visibleTerms.length === 0) return null;
 
@@ -172,8 +246,8 @@ export default function Curriculum() {
                       <div key={tIdx} className={`rounded-[1.5rem] border ${term.plan === 'coop' ? 'border-indigo-200 bg-indigo-50/30 shadow-[0_4px_15px_rgba(79,70,229,0.05)]' : term.isSummer ? 'border-dashed border-slate-300 bg-white' : 'border-slate-200 bg-white shadow-sm'} overflow-hidden flex flex-col hover:shadow-md transition-shadow`}>
                         <div className={`px-5 py-4 border-b flex justify-between items-center ${term.plan === 'coop' ? 'bg-indigo-100/50 border-indigo-100 text-indigo-900' : term.isSummer ? 'bg-slate-50 border-slate-100 text-slate-700' : 'bg-slate-50/80 border-slate-100 text-slate-800'}`}>
                           <h4 className="font-extrabold text-[15px] flex items-center gap-2">
-                             <span className={`w-2 h-2 rounded-full ${term.plan === 'coop' ? 'bg-indigo-500' : 'bg-purple-500'}`}></span>
-                             {term.title}
+                              <span className={`w-2 h-2 rounded-full ${term.plan === 'coop' ? 'bg-indigo-500' : 'bg-purple-500'}`}></span>
+                              {term.title}
                           </h4>
                           {!term.isSummer && (
                             <span className="text-[12px] font-black bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 shadow-sm">รวม {term.totalCredits} นก.</span>
@@ -182,7 +256,7 @@ export default function Curriculum() {
                         
                         <div className="p-5 flex flex-col gap-2.5 flex-1">
                           {term.courses.map((c, cIdx) => {
-                            const info = getFullCourseInfo(c.id, c.name, c.credit);
+                            const info = getFullCourseInfo(c.id);
                             return (
                               <div key={cIdx} className="flex justify-between items-start gap-3 border-b border-slate-100 last:border-0 pb-3 mb-1 last:pb-0 last:mb-0 hover:bg-slate-50 p-2 rounded-xl transition-colors">
                                 <div>
@@ -209,7 +283,7 @@ export default function Curriculum() {
           </div>
         </div>
 
-        {/* ---------------- 📌 3. รายละเอียดโครงสร้างหลักสูตร (หมวดวิชาทั้งหมด) ---------------- */}
+        {/* ---------------- 3. โครงสร้างรายวิชา ---------------- */}
         <div className={`p-8 md:p-12 mb-16 ${bentoGlass} border border-slate-50`}>
           <SectionBanner text="โครงสร้างรายวิชา" variant="website" />
           
@@ -219,10 +293,8 @@ export default function Curriculum() {
           </h3>
 
           <div className="flex flex-col gap-10">
-            {CURRICULUM_CATEGORIES.categories.map((category) => (
+            {categories.map((category) => (
               <div key={category.id} className={`rounded-[2rem] overflow-hidden border ${getColorClasses(category.color)} shadow-sm transition-all hover:shadow-md backdrop-blur-md`}>
-                
-                {/* Category Header */}
                 <div className={`${getHeaderColor(category.color)} text-white p-6 md:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
                   <h3 className="text-xl md:text-2xl font-black tracking-tight">{category.title}</h3>
                   <div className="bg-white/20 backdrop-blur-sm px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap border border-white/20 shadow-sm">
@@ -230,23 +302,19 @@ export default function Curriculum() {
                   </div>
                 </div>
 
-                {/* Sub Categories & Courses */}
                 <div className="p-6 md:p-8 flex flex-col gap-10">
                   {category.subCategories.map((sub, idx) => (
                     <div key={idx}>
                       <div className="flex items-center gap-3 mb-2 border-b border-current pb-2 opacity-80">
                          <h4 className="text-[16px] font-extrabold">{sub.title}</h4>
                       </div>
-                      
                       {sub.description && <p className="text-[13px] mb-5 font-medium opacity-70">{sub.description}</p>}
                       
-                      {/* Grid Layout for Courses */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mt-4">
                         {sub.courses.map((c, i) => {
-                          const info = getFullCourseInfo(c.id, c.name, c.credit);
+                          const info = getFullCourseInfo(c.id);
                           return (
                             <div key={i} className="bg-white/90 backdrop-blur-sm rounded-[1.25rem] p-5 border border-slate-200/60 shadow-[0_4px_15px_rgba(0,0,0,0.02)] flex flex-col justify-between gap-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
-                              
                               <div className="flex justify-between items-start gap-2">
                                 <div className="flex flex-col gap-1">
                                   <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -262,8 +330,6 @@ export default function Curriculum() {
                                   {info.creditText}
                                 </div>
                               </div>
-
-                              {/* แสดงความสัมพันธ์ของวิชา (Prereq / Coreq) */}
                               {(info.prereq?.length > 0 || info.coreq) && (
                                 <div className="pt-3 border-t border-slate-100 flex flex-col gap-2 mt-1">
                                   {info.prereq?.length > 0 && (
@@ -280,7 +346,6 @@ export default function Curriculum() {
                                   )}
                                 </div>
                               )}
-
                             </div>
                           );
                         })}
@@ -288,7 +353,6 @@ export default function Curriculum() {
                     </div>
                   ))}
                 </div>
-
               </div>
             ))}
           </div>

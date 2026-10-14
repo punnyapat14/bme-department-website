@@ -2,16 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 
-// 📌 นำเข้า Component พื้นหลังและแบนเนอร์
+// 📌 นำเข้า Component พื้นหลังและแบนเนอร์ (อ้างอิงตามที่คุณมี)
 import { AuroraBackground, SectionBanner } from '../components/ThemeElements';
 
 // ==========================================
-// 📌 Config API และ Supabase
+// 📌 Config Supabase
 // ==========================================
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const GOOGLE_SHEET_API_URL = import.meta.env.VITE_DEPARTMENT_API_URL;
 
 // ==========================================
 // 📌 Component: ระบบ Fade-in เวลาเลื่อนจอ
@@ -85,17 +84,17 @@ const EventCard = ({ event, isAdmin, onEdit, onDelete }) => (
 
 export default function Events() {
   const [eventsData, setEventsData] = useState([]);
-  const [timelineData, setTimelineData] = useState([]); // 📌 State สำหรับกำหนดการ
+  const [timelineData, setTimelineData] = useState([]);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   
   const [isAdmin, setIsAdmin] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState('Events'); // 📌 เลือกว่ากำลังแก้แท็บไหน (Events หรือ Calendar)
+  const [modalType, setModalType] = useState('Events'); 
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
-  // State ก้อนเดียวใช้แชร์กันได้ (ฟิลด์จะต่างกันนิดหน่อยตาม modalType)
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
@@ -108,30 +107,24 @@ export default function Events() {
 
     const fetchData = async () => {
       try {
-        // ดึงข้อมูลข่าวสาร (Events)
-        const resEvents = await fetch(`${GOOGLE_SHEET_API_URL}?sheet=Events`);
-        const dataEvents = await resEvents.json();
-        
-        // ดึงข้อมูลกำหนดการ (Calendar)
-        const resCalendar = await fetch(`${GOOGLE_SHEET_API_URL}?sheet=Calendar`);
-        const dataCalendar = await resCalendar.json();
+        // ดึงข้อมูล ข่าวสาร จาก Supabase
+        const { data: events, error: eventsError } = await supabase
+          .from('events')
+          .select('*')
+          .order('created_at', { ascending: false }); // ใหม่สุดขึ้นก่อน
+          
+        if (eventsError) throw eventsError;
+        if (events) setEventsData(events);
 
-        if (dataEvents.status === 'success') {
-          const mappedEvents = dataEvents.data.map(item => ({
-            id: item.ID || item.id, category: item.Category || item.category,
-            date: item.Date || item.date, title: item.Title || item.title,
-            desc: item.Description || item.desc, image: item['Image URL'] || item.image,
-          }));
-          setEventsData(mappedEvents.reverse()); // เรียงข่าวใหม่ขึ้นก่อน
-        }
+        // ดึงข้อมูล กำหนดการ จาก Supabase
+        const { data: timelines, error: timelinesError } = await supabase
+          .from('timelines')
+          .select('*')
+          .order('created_at', { ascending: true }); // เรียงตามวันที่ลง (หรือจะเรียงตามอื่นก็ได้)
 
-        if (dataCalendar.status === 'success') {
-          const mappedTimeline = dataCalendar.data.map(item => ({
-            id: item.ID || item.id, shortDate: item.ShortDate || item.shortDate || item.date,
-            title: item.Title || item.title, theme: item.Theme || item.theme || 'slate'
-          }));
-          setTimelineData(mappedTimeline);
-        }
+        if (timelinesError) throw timelinesError;
+        if (timelines) setTimelineData(timelines);
+
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -143,7 +136,6 @@ export default function Events() {
     fetchData();
   }, []);
 
-  // 📌 ฟังก์ชันเปิด Modal รับพารามิเตอร์ว่าแก้ Sheet ไหน
   const handleOpenModal = (item = null, type = 'Events') => {
     setModalType(type);
     if (item) {
@@ -152,7 +144,7 @@ export default function Events() {
       if (type === 'Events') {
         setFormData({ id: '', category: 'กิจกรรม', date: '', title: '', desc: '', image: '' });
       } else {
-        setFormData({ id: '', shortDate: '', title: '', theme: 'slate' });
+        setFormData({ id: '', short_date: '', title: '', theme: 'slate' });
       }
     }
     setIsModalOpen(true);
@@ -162,58 +154,102 @@ export default function Events() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    const action = formData.id ? 'update' : 'create';
-    
-    // เลือก Payload ตาม Modal Type
-    const payloadData = modalType === 'Events' 
-      ? { id: formData.id, category: formData.category, date: formData.date, title: formData.title, desc: formData.desc, image: formData.image }
-      : { id: formData.id, shortDate: formData.shortDate, title: formData.title, theme: formData.theme, category: 'academic' }; // ใส่ category เริ่มต้นให้ Calendar
+  // 📌 ฟังก์ชันอัปโหลดรูปภาพเข้า Supabase Storage
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `events-images/${fileName}`;
 
     try {
-      const response = await fetch(GOOGLE_SHEET_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet: modalType, action: action, data: payloadData }),
-      });
-      
-      const result = await response.json();
-      if (result.status === 'success') {
-        payloadData.id = payloadData.id || Date.now().toString(); 
-        
-        if (modalType === 'Events') {
-          if (action === 'create') setEventsData([payloadData, ...eventsData]);
-          else setEventsData(eventsData.map(ev => ev.id === formData.id ? payloadData : ev));
-        } else {
-          if (action === 'create') setTimelineData([...timelineData, payloadData]);
-          else setTimelineData(timelineData.map(tl => tl.id === formData.id ? payloadData : tl));
-        }
-        setIsModalOpen(false);
-      } else {
-          alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-      }
+      const { error: uploadError } = await supabase.storage
+        .from('images') // ชื่อ Bucket ที่เราสร้าง
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+      setFormData({ ...formData, image: data.publicUrl });
     } catch (error) {
-      alert('ไม่สามารถบันทึกข้อมูลได้');
+      console.error('Upload Error:', error);
+      alert('อัปโหลดรูปภาพไม่สำเร็จ');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.title) return alert("กรุณากรอกหัวข้อ");
+    setIsSaving(true);
+    
+    try {
+      if (modalType === 'Events') {
+        const payload = {
+          category: formData.category,
+          date: formData.date,
+          title: formData.title,
+          desc: formData.desc,
+          image: formData.image
+        };
+
+        if (formData.id) {
+          // Update ข่าวสาร
+          const { data, error } = await supabase.from('events').update(payload).eq('id', formData.id).select();
+          if (error) throw error;
+          setEventsData(eventsData.map(ev => ev.id === formData.id ? data[0] : ev));
+        } else {
+          // Create ข่าวสาร
+          const { data, error } = await supabase.from('events').insert([payload]).select();
+          if (error) throw error;
+          setEventsData([data[0], ...eventsData]);
+        }
+      } else {
+        // จัดการหน้ากำหนดการ (Calendar)
+        const payload = {
+          short_date: formData.short_date,
+          title: formData.title,
+          theme: formData.theme
+        };
+
+        if (formData.id) {
+          // Update กำหนดการ
+          const { data, error } = await supabase.from('timelines').update(payload).eq('id', formData.id).select();
+          if (error) throw error;
+          setTimelineData(timelineData.map(tl => tl.id === formData.id ? data[0] : tl));
+        } else {
+          // Create กำหนดการ
+          const { data, error } = await supabase.from('timelines').insert([payload]).select();
+          if (error) throw error;
+          setTimelineData([...timelineData, data[0]]);
+        }
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (id, type) => {
-    if (!window.confirm('คุณต้องการลบข้อมูลนี้ใช่หรือไม่?')) return;
+    if (!window.confirm('คุณต้องการลบข้อมูลนี้ใช่หรือไม่? ข้อมูลจะถูกลบถาวร')) return;
     try {
-      const response = await fetch(GOOGLE_SHEET_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet: type, action: 'delete', data: { id: id } }),
-      });
-      const result = await response.json();
-      if (result.status === 'success') {
-        if (type === 'Events') setEventsData(eventsData.filter(ev => ev.id !== id));
-        else setTimelineData(timelineData.filter(tl => tl.id !== id));
+      const table = type === 'Events' ? 'events' : 'timelines';
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      
+      if (error) throw error;
+
+      if (type === 'Events') {
+        setEventsData(eventsData.filter(ev => ev.id !== id));
+      } else {
+        setTimelineData(timelineData.filter(tl => tl.id !== id));
       }
     } catch (error) {
+      console.error(error);
       alert('เกิดข้อผิดพลาดในการลบข้อมูล');
     }
   };
@@ -221,7 +257,7 @@ export default function Events() {
   const latestEvent = eventsData.length > 0 ? eventsData[0] : null;
   const searchFilter = (e) => {
     if (!searchTerm) return true;
-    return (e.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || (e.desc || '').toLowerCase().includes(searchTerm.toLowerCase());
+    return (e.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || ((e.desc || '').toLowerCase().includes(searchTerm.toLowerCase()));
   };
 
   const remainingEvents = eventsData.filter(e => e.id !== (latestEvent ? latestEvent.id : null));
@@ -265,6 +301,7 @@ export default function Events() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
           {/* 📌 คอลัมน์ซ้าย: เนื้อหาข่าวสาร */}
           <div className="lg:col-span-2 flex flex-col gap-12">
+            
             {/* ข่าวล่าสุด */}
             {latestEvent && (
                 <FadeInSection delay="0.2s">
@@ -272,12 +309,12 @@ export default function Events() {
                 <div className={`flex flex-col md:flex-row w-full ${bentoGlass} group/latest`}>
                     {isAdmin && (
                         <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover/latest:opacity-100 transition-opacity">
-                            <button onClick={() => handleOpenModal(latestEvent, 'Events')} className="p-2 bg-blue-500 text-white rounded-lg"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
-                            <button onClick={() => handleDelete(latestEvent.id, 'Events')} className="p-2 bg-rose-500 text-white rounded-lg"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                            <button onClick={() => handleOpenModal(latestEvent, 'Events')} className="p-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                            <button onClick={() => handleDelete(latestEvent.id, 'Events')} className="p-2 bg-rose-500 text-white rounded-lg shadow-md hover:bg-rose-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                         </div>
                     )}
                     <div className="md:w-5/12 bg-slate-100 relative overflow-hidden min-h-[280px]">
-                      <img src={latestEvent.image || 'https://via.placeholder.com/800x600'} className="absolute inset-0 w-full h-full object-cover" alt="Latest" />
+                      <img src={latestEvent.image || 'https://via.placeholder.com/800x600?text=No+Image'} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/latest:scale-105" alt="Latest" />
                     </div>
                     <div className="p-8 md:w-7/12 flex flex-col justify-center">
                       <p className="text-slate-500 font-extrabold text-[11px] mb-2">{latestEvent.date}</p>
@@ -290,7 +327,7 @@ export default function Events() {
 
             {/* ช่องค้นหา */}
             <FadeInSection delay="0.25s">
-              <input type="text" placeholder="ค้นหาประกาศ ข่าวสาร หรือกิจกรรม..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-6 pr-6 py-4 bg-white/70 backdrop-blur-xl shadow-sm rounded-2xl border border-slate-200" />
+              <input type="text" placeholder="ค้นหาประกาศ ข่าวสาร หรือกิจกรรม..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-6 pr-6 py-4 bg-white/70 backdrop-blur-xl shadow-sm rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
             </FadeInSection>
 
             {/* ข่าววิชาการ */}
@@ -300,6 +337,7 @@ export default function Events() {
                 <AnimatePresence mode="popLayout">
                   {academicEvents.map(event => <EventCard key={event.id} event={event} isAdmin={isAdmin} onEdit={handleOpenModal} onDelete={handleDelete}/>)}
                 </AnimatePresence>
+                {academicEvents.length === 0 && <p className="text-slate-500 text-sm">ไม่มีข่าววิชาการในขณะนี้</p>}
               </motion.div>
             </FadeInSection>
 
@@ -310,6 +348,7 @@ export default function Events() {
                 <AnimatePresence mode="popLayout">
                   {activityEvents.map(event => <EventCard key={event.id} event={event} isAdmin={isAdmin} onEdit={handleOpenModal} onDelete={handleDelete}/>)}
                 </AnimatePresence>
+                {activityEvents.length === 0 && <p className="text-slate-500 text-sm">ไม่มีข่าวกิจกรรมในขณะนี้</p>}
               </motion.div>
             </FadeInSection>
           </div>
@@ -327,19 +366,18 @@ export default function Events() {
                     <h3 className="text-[18px] font-extrabold text-slate-900">กำหนดการเร็วๆ นี้</h3>
                   </div>
                   {isAdmin && (
-                    <button onClick={() => handleOpenModal(null, 'Calendar')} className="text-purple-600 hover:text-purple-800 bg-purple-50 p-1.5 rounded-md text-sm font-bold">
+                    <button onClick={() => handleOpenModal(null, 'Calendar')} className="text-purple-600 hover:text-purple-800 bg-purple-50 p-1.5 rounded-md text-sm font-bold transition-colors hover:bg-purple-100">
                       + เพิ่ม
                     </button>
                   )}
                 </div>
 
                 <div className="relative pl-6 before:absolute before:inset-0 before:left-[5px] before:w-0.5 before:bg-slate-200 before:h-full">
-                  {/* 📌 จุดที่แก้ไข: ใช้ .slice(0, 5) เพื่อแสดงแค่ 5 รายการแรก */}
                   {timelineData.slice(0, 5).map((item) => (
                     <div key={item.id} className="relative mb-6 last:mb-0 group/timeline">
                       <div className={`absolute -left-[27.5px] top-1 w-3.5 h-3.5 rounded-full ring-4 ring-white ${item.theme === 'rose' ? 'bg-rose-500' : 'bg-slate-400'}`}></div>
                       <div>
-                        <p className="text-[12px] font-bold text-slate-500 mb-0.5">{item.shortDate}</p>
+                        <p className="text-[12px] font-bold text-slate-500 mb-0.5">{item.short_date}</p>
                         <p className={`text-[14px] leading-snug ${item.theme === 'rose' ? 'font-extrabold text-slate-900' : 'font-medium text-slate-700'}`}>
                           {item.title}
                         </p>
@@ -347,13 +385,14 @@ export default function Events() {
                       
                       {/* Admin Edit/Delete สำหรับแต่ละกำหนดการ */}
                       {isAdmin && (
-                        <div className="absolute right-0 top-0 flex gap-1 opacity-0 group-hover/timeline:opacity-100 transition-opacity">
+                        <div className="absolute right-0 top-0 flex gap-1 opacity-0 group-hover/timeline:opacity-100 transition-opacity bg-white/80 backdrop-blur-sm rounded-md px-1">
                           <button onClick={() => handleOpenModal(item, 'Calendar')} className="p-1 text-blue-500 hover:text-blue-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
                           <button onClick={() => handleDelete(item.id, 'Calendar')} className="p-1 text-rose-500 hover:text-rose-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                         </div>
                       )}
                     </div>
                   ))}
+                  {timelineData.length === 0 && <p className="text-sm text-slate-400">ยังไม่มีกำหนดการ</p>}
                 </div>
                 
                 <a href="/services" className="w-full mt-8 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-[13px] font-bold hover:bg-slate-50 hover:text-slate-900 transition-colors flex justify-center items-center">
@@ -381,18 +420,37 @@ export default function Events() {
                   <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-1">หมวดหมู่</label>
-                        <select name="category" value={formData.category} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                        <select name="category" value={formData.category} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500">
                           <option value="กิจกรรม">กิจกรรม</option><option value="วิชาการ">วิชาการ</option>
                         </select>
                       </div>
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-1">วันที่</label>
-                        <input type="text" name="date" value={formData.date} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" />
+                        <input type="text" name="date" value={formData.date} onChange={handleChange} placeholder="เช่น 20 ต.ค. 2566" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
                       </div>
                   </div>
-                  <div><label className="block text-sm font-bold text-slate-700 mb-1">หัวข้อข่าว</label><input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" /></div>
-                  <div><label className="block text-sm font-bold text-slate-700 mb-1">รายละเอียด</label><textarea name="desc" value={formData.desc} onChange={handleChange} rows="4" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl"></textarea></div>
-                  <div><label className="block text-sm font-bold text-slate-700 mb-1">URL รูปภาพ</label><input type="text" name="image" value={formData.image} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" /></div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">หัวข้อข่าว</label>
+                    <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">รายละเอียด</label>
+                    <textarea name="desc" value={formData.desc} onChange={handleChange} rows="4" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500"></textarea>
+                  </div>
+                  
+                  {/* ส่วนอัปโหลดรูปลง Supabase Storage แทนการกรอก URL เอง */}
+                  <div className="border border-slate-200 p-4 rounded-xl bg-slate-50">
+                    <label className="block text-sm font-bold text-slate-700 mb-2">อัปโหลดรูปภาพ (Supabase Storage)</label>
+                    <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" />
+                    {isUploading && <p className="text-sm text-purple-600 mt-2 animate-pulse">กำลังอัปโหลดรูปภาพ...</p>}
+                    
+                    {formData.image && (
+                      <div className="mt-3">
+                        <p className="text-xs text-slate-400 mb-1">รูปภาพปัจจุบัน:</p>
+                        <img src={formData.image} alt="Preview" className="h-32 w-auto object-cover rounded-lg border border-slate-200" />
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -402,11 +460,11 @@ export default function Events() {
                   <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-1">วันที่ (แบบย่อ)</label>
-                        <input type="text" name="shortDate" value={formData.shortDate} onChange={handleChange} placeholder="เช่น: 10 ต.ค. 26" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" />
+                        <input type="text" name="short_date" value={formData.short_date || ''} onChange={handleChange} placeholder="เช่น: 10 ต.ค. 26" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
                       </div>
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-1">ความสำคัญ (สี)</label>
-                        <select name="theme" value={formData.theme} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                        <select name="theme" value={formData.theme} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500">
                           <option value="slate">ปกติ (สีเทา)</option>
                           <option value="rose">งานสำคัญ (สีแดง)</option>
                         </select>
@@ -414,7 +472,7 @@ export default function Events() {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1">ชื่อกำหนดการ / กิจกรรม</label>
-                    <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" />
+                    <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
                   </div>
                 </>
               )}
@@ -422,8 +480,8 @@ export default function Events() {
             </div>
 
             <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
-              <button onClick={() => setIsModalOpen(false)} disabled={isSaving} className="px-6 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-colors">ยกเลิก</button>
-              <button onClick={handleSave} disabled={isSaving} className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-md transition-colors flex items-center gap-2">
+              <button onClick={() => setIsModalOpen(false)} disabled={isSaving || isUploading} className="px-6 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-colors">ยกเลิก</button>
+              <button onClick={handleSave} disabled={isSaving || isUploading} className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-md transition-colors flex items-center gap-2">
                 {isSaving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
                 บันทึกข้อมูล
               </button>
