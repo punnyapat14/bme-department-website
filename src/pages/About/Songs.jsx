@@ -2,35 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuroraBackground, SectionBanner } from '../../components/ThemeElements';
 import { useAuth } from '../../contexts/AuthContext';
-
-// 📌 นำเข้า Supabase
 import { createClient } from '@supabase/supabase-js';
 
-// 📌 รูปโลโก้เริ่มต้น (Fallback)
+// รูปภาพเริ่มต้น (Fallback)
 import imgKmutnbSeal from '../../assets/Symbol/KMUTNB_Logo.png';
 import imgAppliedScience from '../../assets/Symbol/AppliedScience_Logo.png';
 
+// การเชื่อมต่อ Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const GOOGLE_SHEET_API_URL = import.meta.env.VITE_DEPARTMENT_API_URL;
 
-const EMPTY_FORM = { id: '', category: 'university', title: '', detail1: '', detail2: '' }; 
-// detail1 = เนื้อเพลง, detail2 = ลิงก์รูปภาพไอคอน (ถ้ามี)
+const EMPTY_FORM = { id: null, category: 'university', title: '', lyrics: '', image_url: '' }; 
 
-// 🛠️ Helper: จัดการรูปภาพและแปลงลิงก์
+// 🛠️ Helper: จัดการรูปภาพ
 const getIconImage = (url, category) => {
-  if (url && url.trim() !== "") {
-    let parsedUrl = url.trim();
-    if (parsedUrl.includes('drive.google.com/file/d/')) {
-      const match = parsedUrl.match(/\/d\/(.*?)\//);
-      if (match && match[1]) parsedUrl = `https://drive.google.com/uc?id=${match[1]}`;
-    }
-    return parsedUrl;
-  }
-  // ถ้าไม่มีลิงก์ ให้ใช้รูป Default ตามหมวดหมู่
+  if (url && url.trim() !== "") return url.trim();
   if (category === 'faculty') return imgAppliedScience;
-  return imgKmutnbSeal; // ค่าเริ่มต้นคือโลโก้มหาวิทยาลัย
+  return imgKmutnbSeal;
 };
 
 // ==========================================
@@ -78,8 +67,8 @@ const FadeInSection = ({ children, delay = "0s", className = "" }) => {
 // 📌 Component: การ์ดเนื้อเพลง
 // ==========================================
 const SongCard = ({ item, canManage, onEdit, onDelete }) => {
-  const iconImg = getIconImage(item.detail2, item.category);
-  const lyrics = item.detail1 || '';
+  const iconImg = getIconImage(item.image_url, item.category);
+  const lyrics = item.lyrics || '';
 
   return (
     <motion.div
@@ -132,13 +121,19 @@ export default function Songs() {
   const { user } = useAuth();
   
   const [items, setItems] = useState([]);
+  const [pageSettings, setPageSettings] = useState({ title: 'บทเพลงประจำสถาบัน', subtitle: 'ศูนย์รวมเนื้อเพลงประจำมหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ และคณะวิทยาศาสตร์ประยุกต์' });
   const [loading, setLoading] = useState(true);
 
+  // States สำหรับ Modal เพลง
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [uploadFile, setUploadFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // States สำหรับ Modal แก้ไขหัวข้อเว็บ
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsData, setSettingsData] = useState({ title: '', subtitle: '' });
 
   const canManage = Boolean(
     user && (['admin', 'faculty', 'teacher', 'staff'].includes(String(user.role || '').toLowerCase()) || user.isAdmin === true || String(user.email || '').endsWith('@sci.kmutnb.ac.th'))
@@ -152,18 +147,55 @@ export default function Songs() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const sep = GOOGLE_SHEET_API_URL.includes('?') ? '&' : '?';
-      const response = await fetch(`${GOOGLE_SHEET_API_URL}${sep}sheet=Songs`);
-      if (!response.ok) throw new Error('Network error');
-      const result = await response.json();
-      setItems(Array.isArray(result) ? result : (result.data || []));
+      
+      // 1. ดึงข้อความหัวเว็บ (ใช้ maybeSingle จะไม่เกิด Error 406 แม้ไม่มีข้อมูล)
+      const { data: settings } = await supabase.from('page_settings').select('*').eq('id', 'songs_page').maybeSingle();
+      if (settings) {
+        setPageSettings(settings);
+      }
+
+      // 2. ดึงข้อมูลเพลงทั้งหมด
+      const { data: songsData, error: songsError } = await supabase.from('songs').select('*').order('created_at', { ascending: true });
+      
+      if (songsError) {
+        console.error('Error fetching songs:', songsError.message);
+      } else {
+        setItems(songsData || []);
+      }
+
     } catch (err) {
-      console.error(err);
+      console.error('Unexpected error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  // --- จัดการหัวเว็บ (Page Settings) ---
+  const openSettingsModal = () => {
+    setSettingsData({ title: pageSettings.title, subtitle: pageSettings.subtitle });
+    setShowSettingsModal(true);
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    if (!canManage) return;
+    try {
+      setSubmitting(true);
+      await supabase.from('page_settings').upsert({
+        id: 'songs_page',
+        title: settingsData.title,
+        subtitle: settingsData.subtitle
+      });
+      setShowSettingsModal(false);
+      await fetchData();
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // --- จัดการเพลง (Songs) ---
   const openModal = (category, item = null) => {
     if (item) {
       setEditingItem(item);
@@ -176,56 +208,56 @@ export default function Songs() {
     setShowModal(true);
   };
 
-  const handleSave = async (e) => {
+  const handleSaveSong = async (e) => {
     e.preventDefault();
     if (!canManage) return;
     try {
       setSubmitting(true);
-      let finalImageUrl = formData.detail2;
+      let finalImageUrl = formData.image_url;
 
-      // 🌟 อัปโหลดรูปลง Supabase (ถ้ามีการเลือกไฟล์ใหม่)
+      // 🌟 อัปโหลดรูปลง Supabase
       if (uploadFile) {
         const fileExt = uploadFile.name.split('.').pop();
         const fileName = `song_icon_${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
         const filePath = `songs/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage.from('bme-assets').upload(filePath, uploadFile);
+        const { error: uploadError } = await supabase.storage.from('Songs').upload(filePath, uploadFile);
         if (uploadError) throw uploadError;
 
-        const { data: publicUrlData } = supabase.storage.from('bme-assets').getPublicUrl(filePath);
+        const { data: publicUrlData } = supabase.storage.from('Songs').getPublicUrl(filePath);
         finalImageUrl = publicUrlData.publicUrl;
       }
 
-      // 🌟 บันทึกข้อมูลลง Google Sheets
-      const action = editingItem ? 'update' : 'create';
-      await fetch(GOOGLE_SHEET_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          sheet: 'Songs',
-          action,
-          data: { ...formData, detail2: finalImageUrl, id: editingItem ? editingItem.id : Date.now().toString() }
-        })
-      });
+      const payload = {
+        category: formData.category,
+        title: formData.title,
+        lyrics: formData.lyrics,
+        image_url: finalImageUrl,
+      };
+
+      if (editingItem && editingItem.id) {
+        // อัปเดตข้อมูล
+        await supabase.from('songs').update(payload).eq('id', editingItem.id);
+      } else {
+        // สร้างใหม่
+        await supabase.from('songs').insert([payload]);
+      }
 
       setShowModal(false);
       setUploadFile(null);
       await fetchData();
     } catch (err) {
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูลเพลง');
+      console.error(err);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (item) => {
+  const handleDeleteSong = async (item) => {
     if (!canManage || !window.confirm(`ยืนยันการลบเพลง: ${item.title}?`)) return;
     try {
-      await fetch(GOOGLE_SHEET_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ sheet: 'Songs', action: 'delete', id: item.id })
-      });
+      await supabase.from('songs').delete().eq('id', item.id);
       await fetchData();
     } catch (err) {
       alert('ไม่สามารถลบได้');
@@ -241,22 +273,30 @@ export default function Songs() {
       <div className="relative z-10 max-w-[1250px] mx-auto px-4 md:px-6 pt-2">
 
         <FadeInSection delay="0.1s">
-          <div className="text-center max-w-4xl mx-auto pt-2 pb-12">
+          <div className="relative text-center max-w-4xl mx-auto pt-2 pb-12 group">
+            {canManage && (
+              <button 
+                onClick={openSettingsModal} 
+                className="absolute -top-6 right-0 opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-white text-purple-600 border border-purple-200 rounded-lg text-xs font-bold shadow-sm z-20"
+              >
+                ✏️ แก้ไขข้อความหัวเว็บ
+              </button>
+            )}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
-              บทเพลงประจำสถาบัน
+              {pageSettings.title}
             </h1>
             <p className="font-medium text-slate-600 text-lg md:text-xl leading-relaxed mx-auto max-w-2xl">
-              ศูนย์รวมเนื้อเพลงประจำมหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ และคณะวิทยาศาสตร์ประยุกต์
+              {pageSettings.subtitle}
             </p>
           </div>
         </FadeInSection>
 
-        {loading ? <div className="text-center text-slate-500 py-20">กำลังโหลดข้อมูลเนื้อเพลง...</div> : (
+        {loading ? <div className="text-center text-slate-500 py-20">กำลังโหลดข้อมูล...</div> : (
           <>
             {/* บทเพลงมหาวิทยาลัย */}
-            <div className="rounded-[3rem] bg-white/40 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
+            <div className="rounded-[3rem] bg-white/45 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
               <FadeInSection delay="0.2s">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-10 max-w-4xl mx-auto w-full">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-10 max-w-5xl mx-auto w-full">
                   <div className="flex-1 w-full"><SectionBanner text="บทเพลงมหาวิทยาลัย" variant="website" /></div>
                   {canManage && (
                     <button onClick={() => openModal('university')} className="px-5 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold shadow hover:bg-sky-600 shrink-0">
@@ -266,17 +306,17 @@ export default function Songs() {
                 </div>
                 
                 {universitySongs.length > 0 ? (
-                  <div className="columns-1 lg:columns-2 gap-8 max-w-6xl mx-auto">
-                    {universitySongs.map(song => <SongCard key={song.id} item={song} canManage={canManage} onEdit={openModal} onDelete={handleDelete} />)}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto items-start">
+                    {universitySongs.map(song => <SongCard key={song.id} item={song} canManage={canManage} onEdit={openModal} onDelete={handleDeleteSong} />)}
                   </div>
                 ) : <p className="text-center text-slate-500 py-10">ยังไม่มีข้อมูลเพลงในหมวดหมู่นี้</p>}
               </FadeInSection>
             </div>
 
             {/* บทเพลงคณะ */}
-            <div className="rounded-[3rem] bg-white/40 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
+            <div className="rounded-[3rem] bg-white/45 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
               <FadeInSection delay="0.3s">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-10 max-w-4xl mx-auto w-full">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-10 max-w-5xl mx-auto w-full">
                   <div className="flex-1 w-full"><SectionBanner text="บทเพลงประจำคณะ" variant="calendar" /></div>
                   {canManage && (
                     <button onClick={() => openModal('faculty')} className="px-5 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold shadow hover:bg-sky-600 shrink-0">
@@ -286,8 +326,8 @@ export default function Songs() {
                 </div>
                 
                 {facultySongs.length > 0 ? (
-                  <div className="columns-1 lg:columns-2 gap-8 max-w-6xl mx-auto">
-                    {facultySongs.map(song => <SongCard key={song.id} item={song} canManage={canManage} onEdit={openModal} onDelete={handleDelete} />)}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto items-start">
+                    {facultySongs.map(song => <SongCard key={song.id} item={song} canManage={canManage} onEdit={openModal} onDelete={handleDeleteSong} />)}
                   </div>
                 ) : <p className="text-center text-slate-500 py-10">ยังไม่มีข้อมูลเพลงในหมวดหมู่นี้</p>}
               </FadeInSection>
@@ -296,12 +336,12 @@ export default function Songs() {
         )}
       </div>
 
-      {/* 🔒 Modal Form */}
+      {/* 🔒 Modal Form สำหรับจัดการข้อมูลเพลง */}
       <AnimatePresence>
         {canManage && showModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-            <motion.form onSubmit={handleSave} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100">
+            <motion.form onSubmit={handleSaveSong} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100">
               <h3 className="text-xl font-extrabold text-slate-900 mb-4 pb-3 border-b">
                 {editingItem ? 'แก้ไขข้อมูลบทเพลง' : 'เพิ่มบทเพลงใหม่'}
               </h3>
@@ -322,13 +362,13 @@ export default function Songs() {
 
                 <div>
                   <label className="text-xs font-bold">เนื้อเพลง (กด Enter เพื่อขึ้นบรรทัดใหม่)</label>
-                  <textarea required rows="10" className="w-full mt-1 p-2 border rounded-xl text-sm" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} placeholder="วางเนื้อเพลงที่นี่..." />
+                  <textarea required rows="10" className="w-full mt-1 p-2 border rounded-xl text-sm" value={formData.lyrics} onChange={e => setFormData({...formData, lyrics: e.target.value})} placeholder="วางเนื้อเพลงที่นี่..." />
                 </div>
 
                 <div>
                   <label className="text-xs font-bold">อัปโหลดโลโก้เพลง (เว้นว่างไว้เพื่อใช้โลโก้มาตรฐานตามหมวดหมู่)</label>
                   <input type="file" accept="image/*" className="w-full mt-1 p-2 border rounded-xl text-xs bg-slate-50 cursor-pointer" onChange={e => setUploadFile(e.target.files[0])} />
-                  {editingItem && formData.detail2 && !uploadFile && (
+                  {editingItem && formData.image_url && !uploadFile && (
                     <p className="text-[10px] text-green-600 mt-1">✓ มีรูปโลโก้เฉพาะอยู่แล้ว (ไม่ต้องเลือกไฟล์ถ้าไม่ต้องการเปลี่ยน)</p>
                   )}
                 </div>
@@ -344,6 +384,40 @@ export default function Songs() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* 🔒 Modal Form สำหรับจัดการข้อความหัวเว็บ */}
+      <AnimatePresence>
+        {canManage && showSettingsModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSettingsModal(false)} />
+            <motion.form onSubmit={handleSaveSettings} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100">
+              <h3 className="text-xl font-extrabold text-slate-900 mb-4 pb-3 border-b">
+                ตั้งค่าข้อความหัวเว็บ
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold">หัวข้อหลัก (Title)</label>
+                  <input required className="w-full mt-1 p-2 border rounded-xl" value={settingsData.title} onChange={e => setSettingsData({...settingsData, title: e.target.value})} />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold">ข้อความบรรยาย (Subtitle)</label>
+                  <textarea required rows="3" className="w-full mt-1 p-2 border rounded-xl text-sm" value={settingsData.subtitle} onChange={e => setSettingsData({...settingsData, subtitle: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
+                <button type="button" onClick={() => setShowSettingsModal(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100">ยกเลิก</button>
+                <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-purple-600 disabled:opacity-50">
+                  {submitting ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
+                </button>
+              </div>
+            </motion.form>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

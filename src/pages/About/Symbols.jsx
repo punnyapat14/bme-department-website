@@ -2,30 +2,36 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuroraBackground, SectionBanner } from '../../components/ThemeElements';
 import { useAuth } from '../../contexts/AuthContext';
-
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../supabaseClient'; // นำเข้า supabase client
 
 // 📌 รูปสัญลักษณ์ (สำหรับเป็น Fallback)
 import imgKmutnbSeal from '../../assets/Symbol/KMUTNB_Logo.png';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const GOOGLE_SHEET_API_URL = import.meta.env.VITE_DEPARTMENT_API_URL;
-
 const bentoGlass = 'rounded-[2.5rem] bg-white/85 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-50 relative overflow-hidden';
-const EMPTY_FORM = { id: '', category: 'university', subCategory: 'symbol', title: '', subtitle: '', detail1: '', detail2: '', detail3: '', detail4: '' };
+const EMPTY_FORM = { id: '', category: 'university', sub_category: 'symbol', title: '', subtitle: '', detail1: '', detail2: '', detail3: '', detail4: '', sort_order: 1 };
 
-// 🛠️ Helper: ฟังก์ชันแปลงลิงก์ Google Drive ให้อ่านเป็นรูปได้
+// 🛠️ Helper: ฟังก์ชันแปลงลิงก์รูป (อัปเกรดให้ดึงจาก Supabase Bucket อัตโนมัติด้วยชื่อไฟล์)
 const parseImageUrl = (url, fallback = null) => {
   if (!url || url.trim() === "") return fallback;
   let parsedUrl = url.trim();
+
+  // ถ้ารูปมาจาก Google Drive เดิม
   if (parsedUrl.includes('drive.google.com/file/d/')) {
     const match = parsedUrl.match(/\/d\/(.*?)\//);
     if (match && match[1]) {
-      parsedUrl = `https://drive.google.com/uc?id=${match[1]}`;
+      return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
     }
   }
+
+  // 💡 เช็คก่อนว่ามีนามสกุลไฟล์รูปภาพหรือไม่ (เช่น .png, .jpg) ป้องกันการสับสนกับ Emoji
+  const isImageFile = /\.(png|jpe?g|gif|svg|webp)$/i.test(parsedUrl);
+
+  if (!parsedUrl.startsWith('http') && isImageFile) {
+    const { data } = supabase.storage.from('Symbols').getPublicUrl(parsedUrl);
+    return data?.publicUrl || fallback;
+  }
+
+  // ถ้าเป็น Emoji หรือข้อความธรรมดา จะถูกคืนค่ากลับไปตรงๆ
   return parsedUrl;
 };
 
@@ -38,7 +44,7 @@ const SymbolCard = ({ item, canManage, onEdit, onDelete }) => {
   const desc = item.detail1;
   const accent = item.detail2 || '#7B2FA0';
   
-  // ใช้ Helper แปลงลิงก์รูปภาพ
+  // ใช้ Helper ดึงรูปภาพ (detail3 คือลิงก์/ชื่อรูป)
   const img = parseImageUrl(item.detail3, imgKmutnbSeal);
 
   const handleDownload = () => {
@@ -132,13 +138,17 @@ const FactCard = ({ item, canManage, onEdit, onDelete }) => {
   const label = item.title;
   const value = item.subtitle;
   
-  // แปลงลิงก์ไอคอน และ ภาพพื้นหลัง
   let rawIcon = item.detail1 || '📌';
-  const icon = rawIcon.includes('http') ? parseImageUrl(rawIcon) : rawIcon;
-  const bgImage = parseImageUrl(item.detail2); // คอลัมน์ detail2 คือภาพพื้นหลัง
+  const icon = parseImageUrl(rawIcon, rawIcon);
+  const bgImage = parseImageUrl(item.detail2); 
   const tone = item.detail3 || 'border-slate-100';
 
-  const isImageIcon = typeof icon === 'string' && (icon.includes('/') || icon.includes('.') || icon.startsWith('http'));
+  // 💡 เช็คให้ชัวร์ว่าตัวที่ส่งมาเป็นลิงก์เว็บ หรือเป็นชื่อไฟล์รูปภาพจริงๆ เท่านั้น
+  const isImageIcon = typeof icon === 'string' && 
+                      (icon.startsWith('http') || 
+                       icon.includes('googleusercontent.com') ||
+                       /\.(png|jpe?g|gif|svg|webp)$/i.test(icon)
+                      );
 
   return (
     <motion.div whileHover={{ y: -5, scale: 1.02 }} className={`relative overflow-hidden rounded-[2rem] border border-white/60 p-6 shadow-sm bg-gradient-to-br ${tone} group flex flex-col h-full`}>
@@ -189,9 +199,16 @@ export default function Symbols() {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
+  const [bgUploadFile, setBgUploadFile] = useState(null);
 
+  // 🔒 ตรวจสอบสิทธิ์
   const canManage = Boolean(
-    user && (['admin', 'faculty', 'teacher', 'staff'].includes(String(user.role || '').toLowerCase()) || user.isAdmin === true || String(user.email || '').endsWith('@sci.kmutnb.ac.th'))
+    user && (
+      ['admin', 'faculty', 'teacher', 'staff', 'instructor'].includes(String(user.role || '').toLowerCase()) ||
+      user.isAdmin === true ||
+      String(user.email || '').endsWith('@sci.kmutnb.ac.th') ||
+      String(user.email || '').toLowerCase() === 'bme.kmutnb.th@gmail.com'
+    )
   );
 
   useEffect(() => {
@@ -202,11 +219,13 @@ export default function Symbols() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const sep = GOOGLE_SHEET_API_URL.includes('?') ? '&' : '?';
-      const response = await fetch(`${GOOGLE_SHEET_API_URL}${sep}sheet=Symbols`);
-      if (!response.ok) throw new Error('Network error');
-      const result = await response.json();
-      setItems(Array.isArray(result) ? result : (result.data || []));
+      const { data, error } = await supabase
+        .from('symbols_content')
+        .select('*')
+        .order('sort_order', { ascending: true });
+        
+      if (error) throw error;
+      if (data) setItems(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -214,70 +233,88 @@ export default function Symbols() {
     }
   };
 
-  const openModal = (category, item = null) => {
-    if (item) {
-      setEditingItem(item);
-      setFormData(item);
+  const openModal = (categoryOrItem) => {
+    setUploadFile(null);
+    setBgUploadFile(null);
+
+    if (categoryOrItem && typeof categoryOrItem === 'object') {
+      setEditingItem(categoryOrItem);
+      setFormData(categoryOrItem);
     } else {
       setEditingItem(null);
-      setFormData({ ...EMPTY_FORM, category });
+      setFormData({ ...EMPTY_FORM, category: categoryOrItem });
     }
     setShowModal(true);
+  };
+
+  // 📌 อัปโหลดไฟล์ไป Bucket Symbols
+  const uploadImageToSupabase = async (file) => {
+    if (!file) return null;
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('Symbols') // ⚠️ ตรงกับชื่อ Bucket พอดี
+      .upload(fileName, file);
+
+    if (uploadError) throw uploadError;
+
+    // คืนค่ากลับมาเป็นชื่อไฟล์ตรงๆ ได้เลย เพราะโค้ด parseImageUrl จัดการแปลงให้แล้ว!
+    return fileName; 
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     if (!canManage) return;
+
     try {
       setSubmitting(true);
       
-      let finalImageUrl = formData.detail3; // ตั้งค่าเริ่มต้นเป็นลิงก์เดิมที่มีอยู่แล้ว
+      let finalDetail1 = formData.detail1; 
+      let finalDetail2 = formData.detail2; 
+      let finalDetail3 = formData.detail3; 
 
-      // 🌟 สเต็ปที่ 1: ถ้าแอดมินมีการ "เลือกไฟล์รูปภาพใหม่" ให้ส่งไป Supabase ก่อน
-      if (uploadFile) {
-        const fileExt = uploadFile.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`; // สุ่มชื่อไฟล์ป้องกันการซ้ำ
-        const filePath = `symbols/${fileName}`; // เก็บไว้ในโฟลเดอร์ symbols/
-
-        // อัปโหลดไฟล์ขึ้น Supabase (เปลี่ยน 'bme-assets' เป็นชื่อ Bucket ของคุณ)
-        const { error: uploadError } = await supabase.storage
-          .from('bme-assets') 
-          .upload(filePath, uploadFile);
-
-        if (uploadError) throw uploadError;
-
-        // ขอลิงก์ Public URL กลับมา
-        const { data: publicUrlData } = supabase.storage
-          .from('bme-assets')
-          .getPublicUrl(filePath);
-
-        finalImageUrl = publicUrlData.publicUrl; // นำลิงก์ใหม่มาทับลิงก์เดิม
+      if (formData.sub_category === 'symbol') {
+        if (uploadFile) {
+          const uploadedName = await uploadImageToSupabase(uploadFile);
+          if (uploadedName) finalDetail3 = uploadedName; // บันทึกเป็นแค่ชื่อไฟล์
+        }
+      } else if (formData.sub_category === 'fact') {
+        if (uploadFile) {
+          const uploadedName = await uploadImageToSupabase(uploadFile);
+          if (uploadedName) finalDetail1 = uploadedName; 
+        }
+        if (bgUploadFile) {
+          const uploadedName = await uploadImageToSupabase(bgUploadFile);
+          if (uploadedName) finalDetail2 = uploadedName; 
+        }
       }
 
-      // 🌟 สเต็ปที่ 2: นำข้อความและลิงก์รูป (ที่อัปเดตแล้ว) ไปบันทึกลง Google Sheets
-      const action = editingItem ? 'update' : 'create';
-      await fetch(GOOGLE_SHEET_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          sheet: 'Symbols',
-          action,
-          data: { 
-            ...formData, 
-            detail3: finalImageUrl, // บันทึกลิงก์รูปจาก Supabase ลงชีต
-            id: editingItem ? editingItem.id : Date.now().toString() 
-          }
-        })
-      });
+      const payload = {
+        category: formData.category,
+        sub_category: formData.sub_category,
+        title: formData.title,
+        subtitle: formData.subtitle,
+        detail1: finalDetail1,
+        detail2: finalDetail2,
+        detail3: finalDetail3,
+        detail4: formData.detail4,
+        sort_order: Number(formData.sort_order)
+      };
 
-      // รีเซ็ตค่าและปิดหน้าต่าง
+      if (editingItem && editingItem.id) {
+        await supabase.from('symbols_content').update(payload).eq('id', editingItem.id);
+      } else {
+        await supabase.from('symbols_content').insert([payload]);
+      }
+
       setShowModal(false);
-      setUploadFile(null); // ล้างค่าไฟล์ที่เลือก
-      await fetchData(); // โหลดข้อมูลใหม่มาแสดง
+      await fetchData();
       
     } catch (err) {
       console.error(err);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล หรือการอัปโหลดรูปภาพ');
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
       setSubmitting(false);
     }
@@ -286,11 +323,7 @@ export default function Symbols() {
   const handleDelete = async (item) => {
     if (!canManage || !window.confirm(`ยืนยันการลบ: ${item.title}?`)) return;
     try {
-      await fetch(GOOGLE_SHEET_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ sheet: 'Symbols', action: 'delete', id: item.id })
-      });
+      await supabase.from('symbols_content').delete().eq('id', item.id);
       await fetchData();
     } catch (err) {
       alert('ไม่สามารถลบได้');
@@ -298,9 +331,9 @@ export default function Symbols() {
   };
 
   const getSectionData = (category) => ({
-    symbols: items.filter(i => String(i.category || '').trim().toLowerCase() === category && String(i.subCategory || '').trim().toLowerCase() === 'symbol'),
-    colors: items.filter(i => String(i.category || '').trim().toLowerCase() === category && String(i.subCategory || '').trim().toLowerCase() === 'color'),
-    facts: items.filter(i => String(i.category || '').trim().toLowerCase() === category && String(i.subCategory || '').trim().toLowerCase() === 'fact'),
+    symbols: items.filter(i => String(i.category || '').trim().toLowerCase() === category && String(i.sub_category || '').trim().toLowerCase() === 'symbol'),
+    colors: items.filter(i => String(i.category || '').trim().toLowerCase() === category && String(i.sub_category || '').trim().toLowerCase() === 'color'),
+    facts: items.filter(i => String(i.category || '').trim().toLowerCase() === category && String(i.sub_category || '').trim().toLowerCase() === 'fact'),
   });
 
   const sections = [
@@ -327,7 +360,6 @@ export default function Symbols() {
         {loading ? <div className="text-center text-slate-500 py-20">กำลังโหลดข้อมูล...</div> : 
           sections.map(sec => {
             const data = getSectionData(sec.key);
-            // 💡 แก้ไข Layout ให้เป็น Grid เดียวกันทั้งหมด และให้สาขา BME เป็น 4 คอลัมน์
             const gridCols = sec.key === 'bme' ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3';
 
             return (
@@ -341,7 +373,6 @@ export default function Symbols() {
                   )}
                 </div>
 
-                {/* 💡 นำ Card ทุกประเภทมาเรียงต่อกันใน Grid เดียว เพื่อให้ Layout เหมือนต้นฉบับ */}
                 <div className={`grid ${gridCols} gap-6 h-full items-stretch`}>
                   {data.symbols.map(item => <SymbolCard key={item.id} item={item} canManage={canManage} onEdit={openModal} onDelete={handleDelete} />)}
                   {data.colors.map(item => <ColorSwatch key={item.id} item={item} canManage={canManage} onEdit={openModal} onDelete={handleDelete} />)}
@@ -355,10 +386,6 @@ export default function Symbols() {
             );
           })
         }
-
-        <p className="text-center text-[12px] font-medium text-slate-500 italic px-4">
-          * โปรดใช้ตราและสัญลักษณ์ตามรูปแบบที่มหาวิทยาลัยกำหนด ไม่ดัดแปลงสีหรือสัดส่วนของตรา
-        </p>
       </div>
 
       {/* 🔒 Modal Form สำหรับจัดการข้อมูล */}
@@ -366,81 +393,88 @@ export default function Symbols() {
         {canManage && showModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            
             <motion.form onSubmit={handleSave} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100">
-              <h3 className="text-xl font-extrabold text-slate-900 mb-4 pb-3 border-b">
-                {editingItem ? 'แก้ไขข้อมูลสัญลักษณ์' : 'เพิ่มข้อมูลสัญลักษณ์ใหม่'}
-              </h3>
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
+                <h3 className="text-xl font-extrabold text-slate-900">
+                  {editingItem ? 'แก้ไขข้อมูล' : 'เพิ่มข้อมูลใหม่'}
+                </h3>
+                <button type="button" onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-700 font-bold text-xl">✕</button>
+              </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold">หมวดหมู่ระดับ</label>
-                  <select className="w-full mt-1 p-2 border rounded-xl" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                    <option value="university">มหาวิทยาลัย</option>
-                    <option value="faculty">คณะ</option>
-                    <option value="department">ภาควิชา</option>
-                    <option value="bme">สาขาวิชา (BME)</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600">ลำดับการแสดงผล</label>
+                    <input type="number" required className="w-full mt-1 p-2.5 border rounded-xl bg-slate-50" value={formData.sort_order} onChange={e => setFormData({...formData, sort_order: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600">หมวดหมู่ระดับ</label>
+                    <select className="w-full mt-1 p-2.5 border rounded-xl bg-slate-50" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                      <option value="university">มหาวิทยาลัย</option>
+                      <option value="faculty">คณะ</option>
+                      <option value="department">ภาควิชา</option>
+                      <option value="bme">สาขาวิชา (BME)</option>
+                    </select>
+                  </div>
                 </div>
                 
                 <div>
-                  <label className="text-xs font-bold">ประเภทข้อมูล</label>
-                  <select className="w-full mt-1 p-2 border rounded-xl" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}>
+                  <label className="text-xs font-bold text-slate-600">ประเภทของการ์ด</label>
+                  <select className="w-full mt-1 p-2.5 border rounded-xl bg-slate-50" value={formData.sub_category} onChange={e => setFormData({...formData, sub_category: e.target.value})}>
                     <option value="symbol">ตราสัญลักษณ์ (Symbol)</option>
                     <option value="color">สีประจำหน่วยงาน (Color)</option>
-                    <option value="fact">ข้อมูล/วันสำคัญ (Fact)</option>
+                    <option value="fact">ข้อมูลสั้น/ตัวเลขสำคัญ (Fact)</option>
                   </select>
                 </div>
 
-                {formData.subCategory === 'symbol' && (
-  <>
-    <div><label className="text-xs font-bold">ชื่อตรา (Title)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
-    <div><label className="text-xs font-bold">ป้ายกำกับสั้นๆ (Tag)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.subtitle} onChange={e => setFormData({...formData, subtitle: e.target.value})} /></div>
-    <div><label className="text-xs font-bold">คำอธิบาย (Description)</label><textarea className="w-full mt-1 p-2 border rounded-xl" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} /></div>
-    <div><label className="text-xs font-bold">รหัสสีของแถบ (HEX) เช่น #AC3520</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail2} onChange={e => setFormData({...formData, detail2: e.target.value})} /></div>
-    
-    {/* 🌟 จุดที่แก้ไข: เปลี่ยนจาก Input Text เป็น Input File */}
-    <div>
-      <label className="text-xs font-bold">อัปโหลดรูปภาพโลโก้ใหม่</label>
-      <input 
-        type="file" 
-        accept="image/*" 
-        className="w-full mt-1 p-2 border rounded-xl text-xs bg-slate-50 cursor-pointer" 
-        onChange={e => setUploadFile(e.target.files[0])} 
-      />
-      {/* แจ้งเตือนแอดมินกรณีเป็นการกด "แก้ไข" แล้วมีรูปเดิมอยู่แล้ว */}
-      {editingItem && formData.detail3 && !uploadFile && (
-        <p className="text-[10px] text-green-600 mt-1">
-          ✓ มีรูปภาพเดิมอยู่แล้ว (ไม่ต้องเลือกไฟล์ถ้าไม่ต้องการเปลี่ยนรูป)
-        </p>
-      )}
-    </div>
-  </>
-)}
-
-                {formData.subCategory === 'color' && (
+                {formData.sub_category === 'symbol' && (
                   <>
-                    <div><label className="text-xs font-bold">หัวข้อ (เช่น สีประจำมหาวิทยาลัย)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold">ชื่อสี (เช่น สีแดงหมากสุก)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold">HEX Code (เช่น #AC3520)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.detail2} onChange={e => setFormData({...formData, detail2: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold">RGB (เช่น 172, 53, 32)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail3} onChange={e => setFormData({...formData, detail3: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold">CMYK (ถ้ามี)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail4} onChange={e => setFormData({...formData, detail4: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-600">ชื่อตรา (Title)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-600">ป้ายกำกับสั้นๆ (Tag)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.subtitle} onChange={e => setFormData({...formData, subtitle: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-600">คำอธิบาย (Description)</label><textarea className="w-full mt-1 p-2 border rounded-xl" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-600">รหัสสีของแถบ (HEX) เช่น #AC3520</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail2} onChange={e => setFormData({...formData, detail2: e.target.value})} /></div>
+                    
+                    <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
+                      <label className="text-xs font-bold text-purple-900 block mb-2">อัปโหลดรูปภาพโลโก้ใหม่</label>
+                      <input type="file" accept="image/*" className="w-full text-xs cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700" onChange={e => setUploadFile(e.target.files[0])} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600">หรือระบุชื่อไฟล์ (เช่น bme_Logo.png) / URL โดยตรง</label>
+                      <input className="w-full mt-1 p-2 border rounded-xl text-xs" value={formData.detail3} onChange={e => setFormData({...formData, detail3: e.target.value})} placeholder="bme_Logo.png หรือ https://..." />
+                    </div>
                   </>
                 )}
 
-                {formData.subCategory === 'fact' && (
+                {/* ส่วนของ Color และ Fact ยังคงเหมือนเดิม... */}
+                {formData.sub_category === 'color' && (
                   <>
-                    <div><label className="text-xs font-bold">หัวข้อ (เช่น วันสถาปนา)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold">ข้อความ/วันที่ (เช่น 19 กุมภาพันธ์...)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.subtitle} onChange={e => setFormData({...formData, subtitle: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold">ไอคอน (Emoji หรือ URL รูปภาพ)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} placeholder="เช่น 🎓 หรือ https://..." /></div>
-                    <div><label className="text-xs font-bold">URL รูปภาพพื้นหลัง (ถ้ามี)</label><input className="w-full mt-1 p-2 border rounded-xl text-xs" value={formData.detail2} onChange={e => setFormData({...formData, detail2: e.target.value})} placeholder="ใส่ลิงก์รูปพื้นหลังการ์ด" /></div>
-                    <div><label className="text-xs font-bold">Tailwind Gradient Classes (สีพื้นหลังสำรอง)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail3} onChange={e => setFormData({...formData, detail3: e.target.value})} placeholder="เช่น border-indigo-100" /></div>
+                    <div><label className="text-xs font-bold text-slate-600">หัวข้อ (เช่น สีประจำมหาวิทยาลัย)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-600">ชื่อสี (เช่น สีแดงหมากสุก)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-600">HEX Code (เช่น #AC3520)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.detail2} onChange={e => setFormData({...formData, detail2: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-600">RGB (เช่น 172, 53, 32)</label><input className="w-full mt-1 p-2 border rounded-xl" value={formData.detail3} onChange={e => setFormData({...formData, detail3: e.target.value})} /></div>
+                  </>
+                )}
+
+                {formData.sub_category === 'fact' && (
+                  <>
+                    <div><label className="text-xs font-bold text-slate-600">หัวข้อ (เช่น วันสถาปนา)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-600">ข้อความ/วันที่ (เช่น 19 กุมภาพันธ์...)</label><input required className="w-full mt-1 p-2 border rounded-xl" value={formData.subtitle} onChange={e => setFormData({...formData, subtitle: e.target.value})} /></div>
+                    <div className="p-4 bg-slate-50 border rounded-xl space-y-4">
+                      <div><label className="text-xs font-bold text-slate-600 block mb-1">อัปโหลดรูปไอคอน</label><input type="file" accept="image/*" className="text-xs" onChange={e => setUploadFile(e.target.files[0])} /></div>
+                      <div><label className="text-xs font-bold text-slate-600">หรือ ชื่อไฟล์ไอคอน/Emoji</label><input className="w-full mt-1 p-2 border rounded-xl bg-white" value={formData.detail1} onChange={e => setFormData({...formData, detail1: e.target.value})} /></div>
+                    </div>
+                    <div className="p-4 bg-slate-50 border rounded-xl space-y-4">
+                      <div><label className="text-xs font-bold text-slate-600 block mb-1">อัปโหลดรูปพื้นหลัง</label><input type="file" accept="image/*" className="text-xs" onChange={e => setBgUploadFile(e.target.files[0])} /></div>
+                      <div><label className="text-xs font-bold text-slate-600">หรือ ชื่อไฟล์พื้นหลัง/URL</label><input className="w-full mt-1 p-2 border rounded-xl bg-white text-xs" value={formData.detail2} onChange={e => setFormData({...formData, detail2: e.target.value})} /></div>
+                    </div>
                   </>
                 )}
               </div>
 
               <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
-                <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100">ยกเลิก</button>
-                <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-purple-700 disabled:opacity-50">
+                <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">ยกเลิก</button>
+                <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-purple-700 hover:bg-purple-800 disabled:opacity-50">
                   {submitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
                 </button>
               </div>

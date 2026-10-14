@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // 📌 ดึง Component แสงออโรร่าและแบนเนอร์มาจากไฟล์ส่วนกลาง
@@ -6,8 +6,8 @@ import { AuroraBackground, SectionBanner } from '../../components/ThemeElements'
 
 // 📌 ดึงข้อมูลผู้ใช้จาก AuthContext เพื่อตรวจสอบสิทธิ์แอดมิน/อาจารย์
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../supabaseClient'; // นำเข้า supabase client
 
-const GOOGLE_SHEET_API_URL = import.meta.env.VITE_DEPARTMENT_API_URL;
 // ==========================================
 // 📌 Component: ระบบ Fade-in เวลาเลื่อนจอ
 // ==========================================
@@ -36,25 +36,26 @@ const FadeInSection = ({ children, delay = "0s", className = "" }) => {
   );
 };
 
+// Form ดั้งเดิมแบบว่างเปล่า
 const EMPTY_FORM = {
+  id: '',
   category: 'faculty',
-  nameTH: '',
-  nameEN: '',
+  name_th: '',
+  name_en: '',
   position: 'อาจารย์ประจำสาขาวิชา',
-  edu: '',
+  education: '',
   email: '',
   phone: '',
-  imgUrl: '',
-  portfolioUrl: '',
-  scholarUrl: ''
+  image_url: '',
+  portfolio_url: '',
+  scholar_url: '',
+  sort_order: 1
 };
 
+// จัดการ URL รูปภาพกรณีนำมาจาก Google Drive
 const formatImageUrl = (url) => {
   if (!url) return '';
   const trimmed = String(url).trim();
-
-  // ตรวจสอบว่าเป็นลิงก์จาก Google Drive หรือไม่
-  // รองรับทั้งรูปแบบ /file/d/FILE_ID/view และ ?id=FILE_ID
   const driveMatch =
     trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
     trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
@@ -62,26 +63,28 @@ const formatImageUrl = (url) => {
 
   if (driveMatch && driveMatch[1]) {
     const fileId = driveMatch[1];
-    // ใช้ลิงก์ thumbnail พร้อมกำหนดขนาด w1000 (เสถียรที่สุดและไม่ติดบล็อกคุกกี้ของเบราว์เซอร์)
     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
   }
-
-  // ถ้าเป็นลิงก์รูปทั่วไปจากเว็บอื่น ให้ใช้ลิงก์เดิมตามปกติ
   return trimmed;
 };
 
+// ==========================================
+// 📌 Component หลัก
+// ==========================================
 export default function Personnel() {
   const { user } = useAuth();
+  
   const [personnelList, setPersonnelList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // โหมดเพิ่มข้อมูลลง Google Sheet (เฉพาะแอดมิน/อาจารย์)
+  // โหมดจัดการข้อมูล (Modal)
   const [showModal, setShowModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null); // ใช้เก็บข้อมูลที่กำลังแก้ไข (ถ้ามี)
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
-  // 🔒 ตรวจสอบสิทธิ์: ต้องล็อกอินแล้ว และมี role เป็นแอดมิน/อาจารย์ หรือใช้อีเมลของคณะ/สาขา
+  // 🔒 ตรวจสอบสิทธิ์
   const canManagePersonnel = Boolean(
     user && (
       ['admin', 'faculty', 'teacher', 'staff', 'instructor'].includes(String(user.role || '').toLowerCase()) ||
@@ -96,24 +99,19 @@ export default function Personnel() {
     fetchPersonnelData();
   }, []);
 
-  // 📌 ฟังก์ชันดึงข้อมูลจาก Google Sheet อัตโนมัติ
+  // 📌 ฟังก์ชันดึงข้อมูลจาก Supabase
   const fetchPersonnelData = async () => {
     try {
       setLoading(true);
       setError('');
 
-      if (!GOOGLE_SHEET_API_URL || GOOGLE_SHEET_API_URL.includes('ใส่_WEB_APP_URL')) {
-        setError('กรุณาตั้งค่า Web App URL ของ Google Sheet ในไฟล์โค้ดก่อนใช้งาน');
-        setLoading(false);
-        return;
-      }
+      const { data, error } = await supabase
+        .from('personnel_content')
+        .select('*')
+        .order('sort_order', { ascending: true }); // เรียงลำดับตาม sort_order
 
-      const response = await fetch(GOOGLE_SHEET_API_URL);
-      if (!response.ok) throw new Error('ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
-
-      const result = await response.json();
-      const rows = Array.isArray(result) ? result : (result.data || []);
-      setPersonnelList(rows);
+      if (error) throw error;
+      if (data) setPersonnelList(data);
     } catch (err) {
       console.error('Fetch error:', err);
       setError('ไม่สามารถโหลดข้อมูลบุคลากรได้ในขณะนี้');
@@ -122,38 +120,80 @@ export default function Personnel() {
     }
   };
 
-  // 📌 ฟังก์ชันบันทึกข้อมูลใหม่ลง Google Sheet (POST)
-  const handleAddPersonnel = async (e) => {
+  // 📌 เปิด Modal (แยกเคสว่าเปิดเพื่อเพิ่ม หรือเปิดเพื่อแก้ไข)
+  const openModal = (item = null) => {
+    if (item) {
+      setEditingItem(item);
+      setFormData(item); // โหลดข้อมูลเดิมใส่ Form
+    } else {
+      setEditingItem(null);
+      setFormData({ ...EMPTY_FORM, category: 'faculty' }); // ล้าง Form
+    }
+    setShowModal(true);
+  };
+
+  // 📌 ฟังก์ชันบันทึกข้อมูลลง Supabase (เพิ่มใหม่ หรือ อัปเดต)
+  const handleSavePersonnel = async (e) => {
     e.preventDefault();
     if (!canManagePersonnel) return;
-    if (!formData.nameTH.trim()) return alert('กรุณากรอกชื่อ-นามสกุล (ภาษาไทย)');
+    if (!formData.name_th.trim()) return alert('กรุณากรอกชื่อ-นามสกุล (ภาษาไทย)');
 
     try {
       setSubmitting(true);
-      await fetch(GOOGLE_SHEET_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'create', data: formData })
-      });
+      
+      // จัดเตรียมข้อมูลก่อนบันทึก
+      const payload = {
+        category: formData.category,
+        name_th: formData.name_th,
+        name_en: formData.name_en,
+        position: formData.position,
+        education: formData.education,
+        email: formData.email,
+        phone: formData.phone,
+        image_url: formData.image_url,
+        portfolio_url: formData.portfolio_url,
+        scholar_url: formData.scholar_url,
+        sort_order: Number(formData.sort_order)
+      };
+
+      if (editingItem && editingItem.id) {
+        // อัปเดตข้อมูลเก่า
+        await supabase.from('personnel_content').update(payload).eq('id', editingItem.id);
+      } else {
+        // เพิ่มข้อมูลใหม่
+        await supabase.from('personnel_content').insert([payload]);
+      }
 
       setShowModal(false);
-      setFormData(EMPTY_FORM);
-      await fetchPersonnelData();
+      await fetchPersonnelData(); // โหลดข้อมูลใหม่
     } catch (err) {
       console.error('Submit error:', err);
-      alert('บันทึกข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ');
+      alert('บันทึกข้อมูลไม่สำเร็จ');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // แยกหมวดหมู่อาจารย์ และ ฝ่ายสนับสนุน
-  const facultyMembers = personnelList.filter(
-    (p) => (p.category || '').toLowerCase() === 'faculty' || (p.position || '').includes('อาจารย์')
-  );
-  const supportStaff = personnelList.filter(
-    (p) => (p.category || '').toLowerCase() === 'support' || (!(p.position || '').includes('อาจารย์') && (p.category || '').toLowerCase() !== 'faculty')
-  );
+  // 📌 ฟังก์ชันลบข้อมูล
+  const handleDeletePersonnel = async (item) => {
+    if (!canManagePersonnel || !window.confirm(`ยืนยันการลบข้อมูลของ ${item.name_th}?`)) return;
+    
+    try {
+      await supabase.from('personnel_content').delete().eq('id', item.id);
+      await fetchPersonnelData();
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('ลบข้อมูลไม่สำเร็จ');
+    }
+  };
+
+  // แยกหมวดหมู่อาจารย์ และ ฝ่ายสนับสนุน โดยใช้ useMemo เพื่อประสิทธิภาพ
+  const { facultyMembers, supportStaff } = useMemo(() => {
+    return {
+      facultyMembers: personnelList.filter(p => p.category === 'faculty'),
+      supportStaff: personnelList.filter(p => p.category === 'support')
+    };
+  }, [personnelList]);
 
   // ตัวแปรสไตล์
   const personCardGlass = "rounded-[2rem] bg-white/85 backdrop-blur-xl border border-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(147,51,234,0.08)] hover:-translate-y-1 transition-all duration-500 relative overflow-hidden";
@@ -161,32 +201,40 @@ export default function Personnel() {
 
   // Component สำหรับเรนเดอร์การ์ดบุคลากรแต่ละคน
   const renderPersonCard = (person, idx) => (
-    <FadeInSection key={person.id || idx} delay={`${(idx % 3) * 0.1}s`} className="h-full">
-      <div className={`group flex flex-col overflow-hidden h-full ${personCardGlass}`}>
+    <FadeInSection key={person.id} delay={`${(idx % 3) * 0.1}s`} className="h-full">
+      <div className={`group flex flex-col overflow-hidden h-full ${personCardGlass} relative`}>
+
+        {/* 🔒 ปุ่มจัดการแก้ไข/ลบ (แสดงเฉพาะตอน Admin Hover) */}
+        {canManagePersonnel && (
+          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 flex gap-2 z-20 transition-opacity duration-300">
+            <button onClick={() => openModal(person)} className="text-[10px] bg-white text-purple-700 px-3 py-1.5 rounded-lg font-bold shadow-md hover:bg-purple-50">แก้ไข</button>
+            <button onClick={() => handleDeletePersonnel(person)} className="text-[10px] bg-white text-rose-600 px-3 py-1.5 rounded-lg font-bold shadow-md hover:bg-rose-50">ลบ</button>
+          </div>
+        )}
 
         {/* รูปภาพ หรือ ไอคอน */}
         <div className="relative w-full h-72 md:h-[340px] bg-slate-100 overflow-hidden border-b border-slate-100">
-  {person.imgUrl ? (
-    <img
-      src={formatImageUrl(person.imgUrl)}
-      alt={person.nameEN || person.nameTH}
-      referrerPolicy="no-referrer"
-      className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
-      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-    />
-  ) : (
-    <div className="w-full h-full flex items-center justify-center text-slate-300 bg-gradient-to-br from-slate-50 to-slate-200">
-      <svg className="w-20 h-20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
-    </div>
-  )}
-  <div className="absolute bottom-0 w-full h-1/3 bg-gradient-to-t from-white/90 to-transparent"></div>
-</div>
+          {person.image_url ? (
+            <img
+              src={formatImageUrl(person.image_url)}
+              alt={person.name_en || person.name_th}
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-slate-300 bg-gradient-to-br from-slate-50 to-slate-200">
+              <svg className="w-20 h-20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
+            </div>
+          )}
+          <div className="absolute bottom-0 w-full h-1/3 bg-gradient-to-t from-white/90 to-transparent"></div>
+        </div>
 
         {/* ข้อมูลบุคลากร */}
         <div className="flex flex-col flex-1 p-6 md:p-8 bg-white/50">
-          <h3 className="text-lg font-extrabold text-slate-900 leading-snug">{person.nameTH}</h3>
-          {person.nameEN && (
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1 mb-3">{person.nameEN}</p>
+          <h3 className="text-lg font-extrabold text-slate-900 leading-snug">{person.name_th}</h3>
+          {person.name_en && (
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1 mb-3">{person.name_en}</p>
           )}
           {person.position && (
             <p className="text-[13px] font-bold text-purple-700 mb-4 bg-purple-50 inline-block self-start px-3 py-1 rounded-full">
@@ -217,32 +265,28 @@ export default function Personnel() {
           )}
 
           {/* ประวัติการศึกษา */}
-          {person.edu && (
+          {person.education && (
             <p className="text-[13px] font-medium text-slate-600 leading-relaxed mb-6 flex-1">
               <span className="font-bold text-slate-800 block mb-1">สำเร็จการศึกษาจาก:</span>
-              {person.edu}
+              {person.education}
             </p>
           )}
 
           {/* ปุ่มลิงก์ผลงานวิชาการ / Google Scholar */}
-          {(person.portfolioUrl || person.scholarUrl) && (
+          {(person.portfolio_url || person.scholar_url) && (
             <div className="flex gap-2 mt-auto w-full pt-4">
-              {person.portfolioUrl && (
+              {person.portfolio_url && (
                 <a
-                  href={person.portfolioUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={person.portfolio_url} target="_blank" rel="noreferrer"
                   className="flex-1 bg-slate-800 hover:bg-slate-900 text-white py-2.5 px-3 rounded-xl text-center font-bold text-[12px] shadow-sm transition-colors flex items-center justify-center gap-1.5"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                   ผลงานวิชาการ
                 </a>
               )}
-              {person.scholarUrl && (
+              {person.scholar_url && (
                 <a
-                  href={person.scholarUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={person.scholar_url} target="_blank" rel="noreferrer"
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-3 rounded-xl text-center font-bold text-[12px] shadow-sm transition-colors flex items-center justify-center gap-1.5"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
@@ -279,7 +323,7 @@ export default function Personnel() {
               {canManagePersonnel && (
                 <div className="flex justify-center mt-6">
                   <button
-                    onClick={() => setShowModal(true)}
+                    onClick={() => openModal()}
                     className="px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-slate-900 text-white hover:bg-purple-700 shadow-md transition-all flex items-center gap-2 hover:-translate-y-0.5"
                   >
                     + เพิ่มบุคลากรลงฐานข้อมูล
@@ -314,8 +358,8 @@ export default function Personnel() {
             <>
               <FadeInSection delay="0.2s">
                 <div className={sectionWrapperGlass}>
-                  <div className="mb-10 max-w-4xl mx-auto">
-                    <SectionBanner text="อาจารย์ประจำสาขาวิชา" variant="website" />
+                  <div className="mb-10 max-w-4xl mx-auto flex items-center justify-between">
+                    <div className="flex-1 w-full"><SectionBanner text="อาจารย์ประจำสาขาวิชา" variant="website" /></div>
                   </div>
 
                   {facultyMembers.length === 0 ? (
@@ -331,8 +375,8 @@ export default function Personnel() {
               {/* ---------------- การ์ดใหญ่ที่ 2: ฝ่ายสนับสนุน ---------------- */}
               <FadeInSection delay="0.3s">
                 <div className={sectionWrapperGlass}>
-                  <div className="mb-10 max-w-4xl mx-auto">
-                    <SectionBanner text="บุคลากรฝ่ายสนับสนุน" variant="calendar" />
+                  <div className="mb-10 max-w-4xl mx-auto flex items-center justify-between">
+                    <div className="flex-1 w-full"><SectionBanner text="บุคลากรฝ่ายสนับสนุน" variant="calendar" /></div>
                   </div>
 
                   {supportStaff.length === 0 ? (
@@ -350,30 +394,34 @@ export default function Personnel() {
         </section>
       </div>
 
-      {/* ---------------- Modal เพิ่มข้อมูลลง Google Sheet (เฉพาะแอดมิน/อาจารย์) ---------------- */}
+      {/* ---------------- Modal ฟอร์มเพิ่ม/แก้ไข ---------------- */}
       <AnimatePresence>
         {canManagePersonnel && showModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-              onClick={() => setShowModal(false)}
-            />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            
             <motion.form
-              onSubmit={handleAddPersonnel}
+              onSubmit={handleSavePersonnel}
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               className="relative z-10 bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100 space-y-4"
             >
               <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                <h3 className="text-xl font-extrabold text-slate-900">เพิ่มข้อมูลบุคลากร</h3>
+                <h3 className="text-xl font-extrabold text-slate-900">{editingItem ? 'แก้ไขข้อมูลบุคลากร' : 'เพิ่มข้อมูลบุคลากร'}</h3>
                 <button type="button" onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-700 font-bold text-xl">✕</button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-600">ลำดับการแสดงผล (เรียงจากน้อยไปมาก)</label>
+                  <input
+                    type="number" required
+                    value={formData.sort_order}
+                    onChange={(e) => setFormData({ ...formData, sort_order: e.target.value })}
+                    className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
+                  />
+                </div>
                 <div>
                   <label className="text-xs font-bold text-slate-600">หมวดหมู่</label>
                   <select
@@ -398,10 +446,9 @@ export default function Personnel() {
                 <div className="sm:col-span-2">
                   <label className="text-xs font-bold text-slate-600">ชื่อ-นามสกุล (ภาษาไทย) *</label>
                   <input
-                    type="text"
-                    required
-                    value={formData.nameTH}
-                    onChange={(e) => setFormData({ ...formData, nameTH: e.target.value })}
+                    type="text" required
+                    value={formData.name_th}
+                    onChange={(e) => setFormData({ ...formData, name_th: e.target.value })}
                     placeholder="เช่น รศ.ดร. สุรพันธ์ ยิ้มมั่น"
                     className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
                   />
@@ -410,8 +457,8 @@ export default function Personnel() {
                   <label className="text-xs font-bold text-slate-600">ชื่อ-นามสกุล (ภาษาอังกฤษ)</label>
                   <input
                     type="text"
-                    value={formData.nameEN}
-                    onChange={(e) => setFormData({ ...formData, nameEN: e.target.value })}
+                    value={formData.name_en}
+                    onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
                     placeholder="เช่น ASSOC.PROF. DR. SURAPUN YIMMAN"
                     className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
                   />
@@ -440,8 +487,8 @@ export default function Personnel() {
                   <label className="text-xs font-bold text-slate-600">ประวัติการศึกษา</label>
                   <input
                     type="text"
-                    value={formData.edu}
-                    onChange={(e) => setFormData({ ...formData, edu: e.target.value })}
+                    value={formData.education}
+                    onChange={(e) => setFormData({ ...formData, education: e.target.value })}
                     placeholder="เช่น วศ.ด. (วิศวกรรมไฟฟ้า) สจล."
                     className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
                   />
@@ -450,8 +497,8 @@ export default function Personnel() {
                   <label className="text-xs font-bold text-slate-600">ลิงก์รูปภาพ (Image URL)</label>
                   <input
                     type="url"
-                    value={formData.imgUrl}
-                    onChange={(e) => setFormData({ ...formData, imgUrl: e.target.value })}
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                     placeholder="https://..."
                     className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
                   />
@@ -460,8 +507,8 @@ export default function Personnel() {
                   <label className="text-xs font-bold text-slate-600">ลิงก์ผลงานวิชาการ</label>
                   <input
                     type="url"
-                    value={formData.portfolioUrl}
-                    onChange={(e) => setFormData({ ...formData, portfolioUrl: e.target.value })}
+                    value={formData.portfolio_url}
+                    onChange={(e) => setFormData({ ...formData, portfolio_url: e.target.value })}
                     placeholder="https://..."
                     className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
                   />
@@ -470,8 +517,8 @@ export default function Personnel() {
                   <label className="text-xs font-bold text-slate-600">ลิงก์ Google Scholar</label>
                   <input
                     type="url"
-                    value={formData.scholarUrl}
-                    onChange={(e) => setFormData({ ...formData, scholarUrl: e.target.value })}
+                    value={formData.scholar_url}
+                    onChange={(e) => setFormData({ ...formData, scholar_url: e.target.value })}
                     placeholder="https://scholar.google.com/..."
                     className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
                   />
