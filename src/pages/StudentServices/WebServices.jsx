@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createClient } from '@supabase/supabase-js';
 import { AuroraBackground, SectionBanner } from "../../components/ThemeElements";
 import { useAuth } from "../../contexts/AuthContext";
+import { supabase } from "../../supabaseClient";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const FadeInSection = ({ children, delay = "0s", className = "" }) => {
   const [isVisible, setVisible] = useState(false);

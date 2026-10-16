@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
+import AdminPanel from './pages/AdminPanel';
 
 // 📌 1. หมวดหมู่เกี่ยวกับสาขาวิชา (About)
 import Department from './pages/About/Department';
@@ -32,17 +33,19 @@ import Shop from './pages/Shop';
 import Events from './pages/Events';
 import Contact from './pages/Contact';
 
-// 📌 7. ระบบสมาชิก (Auth)
+// 📌 7. ระบบสมาชิก (Auth) และหน้า Profile
 import Login from './pages/Login';
 import Register from './pages/Register';
 import RegisterTeacher from './pages/RegisterTeacher';
+import Profile from './pages/Profile'; // 👈 นำเข้าหน้า Profile ที่สร้างไว้
 
 // นำเข้าโลโก้สำหรับใช้ใน Footer
 import bmeLogoBar from './assets/bme_alumni_bar.png';
 
+// คอมโพเนนต์สำหรับป้องกันการเข้าถึงหน้า หากยังไม่ได้ล็อกอิน
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return null; // หรือใส่ Loading Spinner
   if (!user) return <Navigate to="/login" replace />;
   return children;
 };
@@ -52,12 +55,22 @@ export default function App() {
     <AuthProvider>
       <LanguageProvider>
         <Router>
-          <div className="min-h-screen bg-gray-50 text-gray-800 font-sans flex flex-col">
+          <div className="min-h-screen bg-gray-50 text-gray-800 font-sans flex flex-col relative">
+            {/* Navbar เป็น Fixed อยู่แล้ว */}
             <Navbar />
-            <main className="flex-grow">
+            
+            {/* เพิ่ม pt-28 (112px) หรือ pt-24 (96px) ตรงนี้เพื่อดันเนื้อหาลงมา ไม่ให้ Navbar บังเนื้อหาบนสุด */}
+            <main className="flex-grow pt-24 lg:pt-28">
               <Routes>
                 <Route path="/" element={<Home />} />
-
+ <Route
+  path="/admin"
+  element={
+    <ProtectedRoute>
+      <AdminPanel />
+    </ProtectedRoute>
+  }
+/>
                 {/* --- หมวดหมู่เกี่ยวกับสาขาวิชา --- */}
                 <Route path="/about" element={<Navigate to="/about/department" replace />} />
                 <Route path="/about/department" element={<Department />} />
@@ -80,6 +93,7 @@ export default function App() {
                 {/* --- หมวดหมู่ศิษย์เก่า (Alumni) --- */}
                 <Route path="/alumni" element={<Navigate to="/alumni/relations" replace />} />
                 <Route path="/alumni/database" element={<Directory />} />
+                <Route path="/alumni/relations" element={<AlumniRelations />} />
 
                 {/* --- หมวดหมู่อื่นๆ --- */}
                 <Route path="/events" element={<Events />} />
@@ -90,6 +104,17 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/register-teacher" element={<RegisterTeacher />} />
+                
+                {/* 👈 เพิ่ม Route สำหรับหน้า Profile โดยให้เข้าได้เฉพาะคนที่ล็อกอินแล้ว */}
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+
                 <Route
                   path="/dashboard"
                   element={
@@ -105,7 +130,7 @@ export default function App() {
             </main>
 
             {/* ---------------- Footer Section ---------------- */}
-            <footer className="bg-white border-t border-gray-200 pt-16 pb-8 relative z-10 overflow-hidden">
+            <footer className="bg-white border-t border-gray-200 pt-16 pb-8 relative z-10 overflow-hidden mt-auto">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-purple-700 to-black"></div>
 
               <div className="max-w-7xl mx-auto px-6">
@@ -175,7 +200,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* คอลัมน์ 3: ผังเว็บไซต์ (ใช้ <Link> เพื่อเปลี่ยนหน้าแบบไม่รีโหลด) */}
+                  {/* คอลัมน์ 3: ผังเว็บไซต์ */}
                   <div className="md:col-span-3 lg:col-span-3">
                     <h3 className="text-lg font-bold text-gray-900 mb-6 border-l-4 border-red-600 pl-3">
                       ผังเว็บไซต์

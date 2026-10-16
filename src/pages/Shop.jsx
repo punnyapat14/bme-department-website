@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuroraBackground, SectionBanner } from '../components/ThemeElements';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../supabaseClient'; 
+import { supabase } from "../supabaseClient";
 
 // ==========================================
 // 📌 ค่าคงที่สำหรับสไตล์ (สไตล์ของหมวดหมู่หลัก)

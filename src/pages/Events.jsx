@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from "../supabaseClient";
 
 // 📌 นำเข้า Component พื้นหลังและแบนเนอร์ (อ้างอิงตามที่คุณมี)
 import { AuroraBackground, SectionBanner } from '../components/ThemeElements';
@@ -10,7 +10,7 @@ import { AuroraBackground, SectionBanner } from '../components/ThemeElements';
 // ==========================================
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 
 // ==========================================
 // 📌 Component: ระบบ Fade-in เวลาเลื่อนจอ

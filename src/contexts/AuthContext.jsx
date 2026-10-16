@@ -1,53 +1,44 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from "../supabaseClient";
 
-const AuthContext = createContext({});
-
-export const useAuth = () => useContext(AuthContext);
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // สถานะจำลอง: ให้เริ่มต้นด้วย null (ยังไม่ล็อกอิน)
   const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // จำลองเวลาโหลดข้อมูล 0.5 วินาที ตอนเปิดเว็บ
-    const timer = setTimeout(() => {
+    // 1. เช็คตอนโหลดหน้าเว็บ
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("🔥 [AuthContext] ข้อมูล Session เริ่มต้น:", session); // <--- เพิ่มบรรทัดนี้
+      setUser(session?.user ?? null);
+      setRole(session?.user?.user_metadata?.role ?? null);
       setLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
+    });
+
+    // 2. เช็คตอนกดล็อกอิน/ล็อกเอาท์
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("⚡ [AuthContext] สถานะเปลี่ยน Event:", _event, session); // <--- เพิ่มบรรทัดนี้
+      setUser(session?.user ?? null);
+      setRole(session?.user?.user_metadata?.role ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
   }, []);
 
-  // ฟังก์ชันจำลองการเข้าสู่ระบบ
-  const mockLogin = (email, password) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // จำลองข้อมูล User ที่ล็อกอินสำเร็จ
-        setUser({ id: 'mock-uuid-1234', email: email });
-        resolve({ error: null });
-      }, 800); // ดีเลย์ 0.8 วิ ให้ดูสมจริง
-    });
-  };
-
-  // ฟังก์ชันจำลองการออกจากระบบ
-  const mockLogout = () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        setUser(null);
-        resolve({ error: null });
-      }, 500);
-    });
-  };
-
-  const value = {
-    user,
-    loading,
-    login: mockLogin,
-    logout: mockLogout
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, role, loading, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
 };
+
+export const useAuth = () => useContext(AuthContext);

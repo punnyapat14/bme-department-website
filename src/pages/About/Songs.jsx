@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuroraBackground, SectionBanner } from '../../components/ThemeElements';
 import { useAuth } from '../../contexts/AuthContext';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from "../../supabaseClient";
 
 // รูปภาพเริ่มต้น (Fallback)
 import imgKmutnbSeal from '../../assets/Symbol/KMUTNB_Logo.png';
@@ -11,7 +11,6 @@ import imgAppliedScience from '../../assets/Symbol/AppliedScience_Logo.png';
 // การเชื่อมต่อ Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const EMPTY_FORM = { id: null, category: 'university', title: '', lyrics: '', image_url: '' }; 
 

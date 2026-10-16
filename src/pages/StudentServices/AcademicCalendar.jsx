@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from "../../supabaseClient";
 
 // 📌 นำเข้า Component พื้นหลังและแบนเนอร์จาก ThemeElements
 import { AuroraBackground, SectionBanner } from "../../components/ThemeElements";
@@ -9,7 +9,6 @@ import { useAuth } from "../../contexts/AuthContext";
 // 📌 ตั้งค่า Supabase Client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ==========================================
 // 📌 ธีมสีสำหรับการ์ดกิจกรรมนักศึกษา

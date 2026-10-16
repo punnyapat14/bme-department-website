@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion'; 
-import { supabase } from '../../supabaseClient'; // 📌 นำเข้า Supabase
+import { supabase } from '../../supabaseClient';
 
 // 📌 กำหนดค่าเกรดคงที่ (Business Logic พื้นฐานของมหาวิทยาลัย)
 const GRADE_POINTS = { 'A': 4.0, 'B+': 3.5, 'B': 3.0, 'C+': 2.5, 'C': 2.0, 'D+': 1.5, 'D': 1.0, 'F': 0, 'Fa': 0, 'Fe': 0, 'W': null, 'S': null, 'U': null, 'ยังไม่ระบุ': null };
