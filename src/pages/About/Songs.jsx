@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuroraBackground, SectionBanner } from '../../components/ThemeElements';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,18 +8,15 @@ import { supabase } from "../../supabaseClient";
 import imgKmutnbSeal from '../../assets/Symbol/KMUTNB_Logo.png';
 import imgAppliedScience from '../../assets/Symbol/AppliedScience_Logo.png';
 
-// การเชื่อมต่อ Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-const EMPTY_FORM = { id: null, category: 'university', title: '', lyrics: '', image_url: '' }; 
-
-// 🛠️ Helper: จัดการรูปภาพ
+// 🛠️ Helper: จัดการรูปภาพโลโก้
 const getIconImage = (url, category) => {
   if (url && url.trim() !== "") return url.trim();
   if (category === 'faculty') return imgAppliedScience;
   return imgKmutnbSeal;
 };
+
+// Form ดั้งเดิมแบบว่างเปล่าสำหรับการ์ดบทเพลง
+const EMPTY_FORM = { id: null, category: 'university', title: '', lyrics: '', image_url: '', sort_order: 1 };
 
 // ==========================================
 // 📌 Components ตกแต่ง
@@ -44,17 +41,13 @@ const BirdFlock = () => (
 const FadeInSection = ({ children, delay = "0s", className = "" }) => {
   const [isVisible, setVisible] = useState(false);
   const domRef = useRef();
-
   useEffect(() => {
     const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) setVisible(true);
-      });
-    }, { threshold: 0.15 });
+      entries.forEach(entry => { if (entry.isIntersecting) setVisible(true); });
+    }, { threshold: 0.1 });
     if (domRef.current) observer.observe(domRef.current);
     return () => observer.disconnect();
   }, []);
-
   return (
     <div ref={domRef} className={`transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'} ${className}`} style={{ transitionDelay: delay }}>
       {children}
@@ -63,55 +56,22 @@ const FadeInSection = ({ children, delay = "0s", className = "" }) => {
 };
 
 // ==========================================
-// 📌 Component: การ์ดเนื้อเพลง
+// 📌 ปุ่มแก้ไข (Edit / Delete) มาตรฐาน (แสดงตลอดเวลา ไม่ซ่อนแล้ว)
 // ==========================================
-const SongCard = ({ item, canManage, onEdit, onDelete }) => {
-  const iconImg = getIconImage(item.image_url, item.category);
-  const lyrics = item.lyrics || '';
-
-  return (
-    <motion.div
-      whileHover={{ y: -6, scale: 1.01 }}
-      transition={{ duration: 0.3 }}
-      className="break-inside-avoid mb-8 rounded-[2rem] bg-white border border-white/60 shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_20px_40px_rgba(14,165,233,0.15)] relative overflow-hidden group"
-    >
-      <CardCloudDecoration />
-      <BirdFlock />
-      
-      <div className="p-8 relative z-20">
-        {canManage && (
-          <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-30 bg-white/50 backdrop-blur-sm p-2 rounded-bl-2xl">
-            <button onClick={() => onEdit(item)} className="text-[10px] text-purple-600 font-bold bg-white px-2 py-1 rounded shadow-sm">แก้ไข</button>
-            <button onClick={() => onDelete(item)} className="text-[10px] text-rose-600 font-bold bg-white px-2 py-1 rounded shadow-sm">ลบ</button>
-          </div>
-        )}
-
-        <div className="flex flex-col items-center pb-6 mb-6 relative">
-          <div className="absolute bottom-0 w-32 h-[1px] bg-gradient-to-r from-transparent via-sky-300 to-transparent"></div>
-          <div className="w-16 h-16 rounded-full bg-white shadow-md border border-slate-100 p-1 mb-4 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-500">
-            <img src={iconImg} alt="Logo" className="w-full h-full object-contain" />
-          </div>
-          <div className="flex items-center gap-3 w-full justify-center">
-            <div className="h-1 w-4 bg-slate-800 rounded-full opacity-60"></div>
-            <h3 className="text-xl md:text-2xl font-black text-slate-800 text-center tracking-tight drop-shadow-sm">{item.title}</h3>
-            <div className="h-1 w-4 bg-slate-800 rounded-full opacity-60"></div>
-          </div>
-        </div>
-
-        <div className="text-center space-y-2">
-          {lyrics.split('\n').map((line, idx) => {
-            const isHighlight = line.trim().startsWith('(') || line.trim().startsWith('*') || line.trim().startsWith('-');
-            return (
-              <p key={idx} className={`text-[15px] leading-relaxed transition-colors ${line.trim() === '' ? 'h-4' : ''} ${isHighlight ? 'text-blue-800 font-bold italic' : 'text-slate-700 font-medium'}`}>
-                {line}
-              </p>
-            );
-          })}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+const ActionButtons = ({ onEdit, onDelete, positionClass = "top-3 right-3" }) => (
+  <div className={`absolute ${positionClass} flex gap-2 z-30`}>
+    {onEdit && (
+      <button type="button" onClick={onEdit} className="p-1.5 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-colors">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+      </button>
+    )}
+    {onDelete && (
+      <button type="button" onClick={onDelete} className="p-1.5 bg-rose-500 text-white rounded-lg shadow-md hover:bg-rose-600 transition-colors">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+      </button>
+    )}
+  </div>
+);
 
 // ==========================================
 // 📌 Main Component
@@ -119,23 +79,30 @@ const SongCard = ({ item, canManage, onEdit, onDelete }) => {
 export default function Songs() {
   const { user } = useAuth();
   
-  const [items, setItems] = useState([]);
-  const [pageSettings, setPageSettings] = useState({ title: 'บทเพลงประจำสถาบัน', subtitle: 'ศูนย์รวมเนื้อเพลงประจำมหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ และคณะวิทยาศาสตร์ประยุกต์' });
+  // State เก็บข้อมูล
+  const [pageContent, setPageContent] = useState({ title: '', subtitle: '', description: '' });
+  const [songsList, setSongsList] = useState([]);
+  
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // States สำหรับ Modal เพลง
+  // State สำหรับโหมดจัดการข้อมูล (Modal)
   const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState('song'); 
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState(EMPTY_FORM);
-  const [uploadFile, setUploadFile] = useState(null);
+  const [formData, setFormData] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // States สำหรับ Modal แก้ไขหัวข้อเว็บ
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [settingsData, setSettingsData] = useState({ title: '', subtitle: '' });
-
-  const canManage = Boolean(
-    user && (['admin', 'faculty', 'teacher', 'staff'].includes(String(user.role || '').toLowerCase()) || user.isAdmin === true || String(user.email || '').endsWith('@sci.kmutnb.ac.th'))
+  // 🔒 ตรวจสอบสิทธิ์
+  const canManageSongs = Boolean(
+    user && (
+      ['admin', 'faculty', 'teacher', 'staff', 'instructor'].includes(String(user.role || user?.user_metadata?.role || '').toLowerCase()) ||
+      user.isAdmin === true ||
+      String(user.email || '').endsWith('@sci.kmutnb.ac.th') ||
+      String(user.email || '').endsWith('@email.kmutnb.ac.th') || 
+      String(user.email || '').toLowerCase() === 'bme.kmutnb.th@gmail.com'
+    )
   );
 
   useEffect(() => {
@@ -146,159 +113,248 @@ export default function Songs() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError('');
       
-      // 1. ดึงข้อความหัวเว็บ (ใช้ maybeSingle จะไม่เกิด Error 406 แม้ไม่มีข้อมูล)
-      const { data: settings } = await supabase.from('page_settings').select('*').eq('id', 'songs_page').maybeSingle();
-      if (settings) {
-        setPageSettings(settings);
+      const { data: contentData } = await supabase.from('songs_page_content').select('*').eq('id', 1).maybeSingle();
+      if (contentData) {
+        setPageContent(contentData);
+      } else {
+        setPageContent({ title: 'บทเพลงประจำสถาบัน', subtitle: 'ศูนย์รวมเนื้อเพลง', description: 'มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ และคณะวิทยาศาสตร์ประยุกต์' });
       }
 
-      // 2. ดึงข้อมูลเพลงทั้งหมด
-      const { data: songsData, error: songsError } = await supabase.from('songs').select('*').order('created_at', { ascending: true });
-      
-      if (songsError) {
-        console.error('Error fetching songs:', songsError.message);
-      } else {
-        setItems(songsData || []);
-      }
+      const { data: songsData, error: songsError } = await supabase.from('songs').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+      if (songsError) throw songsError;
+      if (songsData) setSongsList(songsData);
 
     } catch (err) {
-      console.error('Unexpected error:', err);
+      console.error('Fetch error:', err);
+      setError('ไม่สามารถโหลดข้อมูลได้ในขณะนี้');
     } finally {
       setLoading(false);
     }
   };
 
-  // --- จัดการหัวเว็บ (Page Settings) ---
-  const openSettingsModal = () => {
-    setSettingsData({ title: pageSettings.title, subtitle: pageSettings.subtitle });
-    setShowSettingsModal(true);
-  };
-
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
-    if (!canManage) return;
-    try {
-      setSubmitting(true);
-      await supabase.from('page_settings').upsert({
-        id: 'songs_page',
-        title: settingsData.title,
-        subtitle: settingsData.subtitle
+  // 📌 เปิด Modal
+  const openModal = (item = null, type = 'song') => {
+    setModalType(type);
+    
+    if (type === 'content') {
+      setFormData(pageContent);
+    } else if (type === 'editBanners') {
+      // 📌 เปิดแบบฟอร์มสำหรับแก้แบนเนอร์โดยเฉพาะ
+      setFormData({
+        ...pageContent,
+        sec_uni_title: pageContent.sec_uni_title || 'บทเพลงมหาวิทยาลัย',
+        sec_fac_title: pageContent.sec_fac_title || 'บทเพลงประจำคณะ'
       });
-      setShowSettingsModal(false);
-      await fetchData();
-    } catch (err) {
-      alert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // --- จัดการเพลง (Songs) ---
-  const openModal = (category, item = null) => {
-    if (item) {
-      setEditingItem(item);
-      setFormData(item);
     } else {
-      setEditingItem(null);
-      setFormData({ ...EMPTY_FORM, category });
+      if (item && typeof item === 'object') {
+        setEditingItem(item);
+        setFormData(item);
+      } else {
+        setEditingItem(null);
+        setFormData({ ...EMPTY_FORM, category: typeof item === 'string' ? item : 'university' });
+      }
     }
-    setUploadFile(null);
     setShowModal(true);
   };
 
-  const handleSaveSong = async (e) => {
+  // 📌 ฟังก์ชันจัดการการอัปโหลดรูปภาพ
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `song_icon_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `songs/${fileName}`; 
+
+    try {
+      const { error: uploadError } = await supabase.storage.from('Songs').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('Songs').getPublicUrl(filePath);
+      setFormData({ ...formData, image_url: data.publicUrl });
+    } catch (error) {
+      alert('อัปโหลดรูปภาพไม่สำเร็จ');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // 📌 ฟังก์ชันบันทึกข้อมูล
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!canManage) return;
+    if (!canManageSongs) return;
+
     try {
       setSubmitting(true);
-      let finalImageUrl = formData.image_url;
-
-      // 🌟 อัปโหลดรูปลง Supabase
-      if (uploadFile) {
-        const fileExt = uploadFile.name.split('.').pop();
-        const fileName = `song_icon_${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
-        const filePath = `songs/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage.from('Songs').upload(filePath, uploadFile);
-        if (uploadError) throw uploadError;
-
-        const { data: publicUrlData } = supabase.storage.from('Songs').getPublicUrl(filePath);
-        finalImageUrl = publicUrlData.publicUrl;
-      }
-
-      const payload = {
-        category: formData.category,
-        title: formData.title,
-        lyrics: formData.lyrics,
-        image_url: finalImageUrl,
-      };
-
-      if (editingItem && editingItem.id) {
-        // อัปเดตข้อมูล
-        await supabase.from('songs').update(payload).eq('id', editingItem.id);
+      
+      // 1. บันทึกข้อมูลส่วนหัว หรือ แบนเนอร์
+      if (modalType === 'content' || modalType === 'editBanners') {
+        const payload = {
+          id: 1,
+          title: formData.title || pageContent.title || '',
+          subtitle: formData.subtitle || pageContent.subtitle || '',
+          description: formData.description || pageContent.description || '',
+          sec_uni_title: formData.sec_uni_title || pageContent.sec_uni_title || 'บทเพลงมหาวิทยาลัย',
+          sec_fac_title: formData.sec_fac_title || pageContent.sec_fac_title || 'บทเพลงประจำคณะ'
+        };
+        const { data, error } = await supabase.from('songs_page_content').upsert(payload, { onConflict: 'id' }).select();
+        if (error) throw error;
+        if (data && data.length > 0) setPageContent(data[0]);
+        
+      // 2. บันทึกข้อมูลบทเพลง
       } else {
-        // สร้างใหม่
-        await supabase.from('songs').insert([payload]);
+        if (!formData.title.trim()) {
+          alert('กรุณากรอกชื่อเพลง');
+          setSubmitting(false);
+          return;
+        }
+
+        const payload = {
+          category: formData.category,
+          title: formData.title,
+          lyrics: formData.lyrics || '',
+          image_url: formData.image_url || '',
+          sort_order: Number(formData.sort_order || 1)
+        };
+
+        if (editingItem && editingItem.id) {
+          const { error } = await supabase.from('songs').update(payload).eq('id', editingItem.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('songs').insert([payload]);
+          if (error) throw error;
+        }
       }
 
       setShowModal(false);
-      setUploadFile(null);
-      await fetchData();
+      await fetchData(); 
     } catch (err) {
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูลเพลง');
-      console.error(err);
+      console.error('Submit error:', err);
+      alert('บันทึกข้อมูลไม่สำเร็จ');
     } finally {
       setSubmitting(false);
     }
   };
 
+  // 📌 ฟังก์ชันลบเพลง
   const handleDeleteSong = async (item) => {
-    if (!canManage || !window.confirm(`ยืนยันการลบเพลง: ${item.title}?`)) return;
+    if (!canManageSongs || !window.confirm(`ยืนยันการลบเพลง: ${item.title}? ข้อมูลจะถูกลบถาวร`)) return;
     try {
-      await supabase.from('songs').delete().eq('id', item.id);
+      const { error } = await supabase.from('songs').delete().eq('id', item.id);
+      if (error) throw error;
       await fetchData();
     } catch (err) {
-      alert('ไม่สามารถลบได้');
+      alert('ลบข้อมูลไม่สำเร็จ: ' + err.message);
     }
   };
 
-  const universitySongs = items.filter(s => String(s.category || '').trim().toLowerCase() === 'university');
-  const facultySongs = items.filter(s => String(s.category || '').trim().toLowerCase() === 'faculty');
+  // แยกหมวดหมู่เพลง
+  const { universitySongs, facultySongs } = useMemo(() => {
+    return {
+      universitySongs: songsList.filter(s => String(s.category || '').trim().toLowerCase() === 'university'),
+      facultySongs: songsList.filter(s => String(s.category || '').trim().toLowerCase() === 'faculty')
+    };
+  }, [songsList]);
+
+  const sectionWrapperGlass = "rounded-[3rem] bg-white/45 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16";
+
+  // Component สำหรับแสดงการ์ดเพลง
+  const renderSongCard = (item) => {
+    const iconImg = getIconImage(item.image_url, item.category);
+    const lyrics = item.lyrics || '';
+
+    return (
+      <motion.div
+        key={item.id}
+        whileHover={{ y: -6, scale: 1.01 }}
+        transition={{ duration: 0.3 }}
+        className="break-inside-avoid mb-8 rounded-[2rem] bg-white border border-white/60 shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_20px_40px_rgba(14,165,233,0.15)] relative overflow-hidden group/card"
+      >
+        <CardCloudDecoration />
+        <BirdFlock />
+        
+        {/* 📌 เปลี่ยนมาใช้ปุ่ม ActionButtons ที่แสดงถาวร */}
+        {canManageSongs && (
+          <ActionButtons onEdit={() => openModal(item, 'song')} onDelete={() => handleDeleteSong(item)} />
+        )}
+
+        <div className="p-8 relative z-20 mt-4">
+          <div className="flex flex-col items-center pb-6 mb-6 relative">
+            <div className="absolute bottom-0 w-32 h-[1px] bg-gradient-to-r from-transparent via-sky-300 to-transparent"></div>
+            <div className="w-16 h-16 rounded-full bg-white shadow-md border border-slate-100 p-1 mb-4 flex items-center justify-center transform group-hover/card:scale-110 transition-transform duration-500">
+              <img src={iconImg} alt="Logo" className="w-full h-full object-contain" />
+            </div>
+            <div className="flex items-center gap-3 w-full justify-center">
+              <div className="h-1 w-4 bg-slate-800 rounded-full opacity-60"></div>
+              <h3 className="text-xl md:text-2xl font-black text-slate-800 text-center tracking-tight drop-shadow-sm">{item.title}</h3>
+              <div className="h-1 w-4 bg-slate-800 rounded-full opacity-60"></div>
+            </div>
+          </div>
+
+          <div className="text-center space-y-2">
+            {lyrics.split('\n').map((line, idx) => {
+              const isHighlight = line.trim().startsWith('(') || line.trim().startsWith('*') || line.trim().startsWith('-');
+              return (
+                <p key={idx} className={`text-[15px] leading-relaxed transition-colors ${line.trim() === '' ? 'h-4' : ''} ${isHighlight ? 'text-blue-800 font-bold italic' : 'text-slate-700 font-medium'}`}>
+                  {line}
+                </p>
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
 
   return (
-    <div className="relative font-sans text-slate-900 min-h-screen pt-16 pb-32">
+    <div className="relative font-sans text-slate-900 bg-[#fdfcff] min-h-screen pt-16 pb-32">
       <AuroraBackground />
       <div className="relative z-10 max-w-[1250px] mx-auto px-4 md:px-6 pt-2">
 
+        {/* ---------------- Header Section ---------------- */}
         <FadeInSection delay="0.1s">
-          <div className="relative text-center max-w-4xl mx-auto pt-2 pb-12 group">
-            {canManage && (
-              <button 
-                onClick={openSettingsModal} 
-                className="absolute -top-6 right-0 opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-white text-purple-600 border border-purple-200 rounded-lg text-xs font-bold shadow-sm z-20"
-              >
-                ✏️ แก้ไขข้อความหัวเว็บ
-              </button>
+          <div className="relative text-center max-w-4xl mx-auto pt-2 pb-12 rounded-3xl transition-colors duration-300">
+            {canManageSongs && (
+              <ActionButtons onEdit={() => openModal(null, 'content')} positionClass="-top-4 right-0 md:-right-8" />
             )}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
-              {pageSettings.title}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm px-6">
+              {pageContent.title || "บทเพลงประจำสถาบัน"}
             </h1>
-            <p className="font-medium text-slate-600 text-lg md:text-xl leading-relaxed mx-auto max-w-2xl">
-              {pageSettings.subtitle}
+            <p className="font-medium text-slate-600 text-lg md:text-xl leading-relaxed mx-auto max-w-2xl px-6 whitespace-pre-line">
+              {pageContent.subtitle ? pageContent.subtitle + '\n' : ''}
+              {pageContent.description}
             </p>
           </div>
         </FadeInSection>
 
-        {loading ? <div className="text-center text-slate-500 py-20">กำลังโหลดข้อมูล...</div> : (
+        {loading && <div className="text-center text-slate-500 py-20 animate-pulse font-bold text-lg">กำลังโหลดข้อมูล...</div>}
+        
+        {!loading && error && (
+          <div className="max-w-2xl mx-auto mb-12 p-6 rounded-3xl bg-amber-50 border border-amber-200 text-center text-amber-800 font-bold">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && (
           <>
-            {/* บทเพลงมหาวิทยาลัย */}
-            <div className="rounded-[3rem] bg-white/45 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
+            {/* ---------------- บทเพลงมหาวิทยาลัย ---------------- */}
+            <div className={sectionWrapperGlass}>
               <FadeInSection delay="0.2s">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-10 max-w-5xl mx-auto w-full">
-                  <div className="flex-1 w-full"><SectionBanner text="บทเพลงมหาวิทยาลัย" variant="website" /></div>
-                  {canManage && (
-                    <button onClick={() => openModal('university')} className="px-5 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold shadow hover:bg-sky-600 shrink-0">
+                  <div className="flex-1 w-full flex items-center gap-2">
+                    <div className="flex-1"><SectionBanner text={pageContent.sec_uni_title || 'บทเพลงมหาวิทยาลัย'} variant="website" /></div>
+                    
+                    {/* 📌 ปุ่มแก้ชื่อแบนเนอร์ (ติดกับแบนเนอร์) */}
+                    {canManageSongs && (
+                      <button onClick={() => openModal(null, 'editBanners')} title="แก้ไขข้อความแบนเนอร์" className="p-2.5 bg-slate-100/80 text-slate-500 rounded-xl hover:bg-purple-100 hover:text-purple-600 transition shadow-sm border border-slate-200">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                      </button>
+                    )}
+                  </div>
+                  {canManageSongs && (
+                    <button onClick={() => openModal('university', 'song')} className="px-5 py-2.5 bg-slate-900 text-white rounded-full text-sm font-bold shadow-md hover:bg-purple-700 shrink-0 flex items-center gap-2 transition-transform hover:-translate-y-0.5">
                       + เพิ่มเพลงมหาวิทยาลัย
                     </button>
                   )}
@@ -306,19 +362,28 @@ export default function Songs() {
                 
                 {universitySongs.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto items-start">
-                    {universitySongs.map(song => <SongCard key={song.id} item={song} canManage={canManage} onEdit={openModal} onDelete={handleDeleteSong} />)}
+                    {universitySongs.map(renderSongCard)}
                   </div>
-                ) : <p className="text-center text-slate-500 py-10">ยังไม่มีข้อมูลเพลงในหมวดหมู่นี้</p>}
+                ) : <p className="text-center text-slate-500 py-10 font-medium">ยังไม่มีข้อมูลเพลงในหมวดหมู่นี้</p>}
               </FadeInSection>
             </div>
 
-            {/* บทเพลงคณะ */}
-            <div className="rounded-[3rem] bg-white/45 backdrop-blur-2xl border border-white/60 shadow-sm p-6 md:p-10 mb-16">
+            {/* ---------------- บทเพลงคณะ ---------------- */}
+            <div className={sectionWrapperGlass}>
               <FadeInSection delay="0.3s">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-10 max-w-5xl mx-auto w-full">
-                  <div className="flex-1 w-full"><SectionBanner text="บทเพลงประจำคณะ" variant="calendar" /></div>
-                  {canManage && (
-                    <button onClick={() => openModal('faculty')} className="px-5 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold shadow hover:bg-sky-600 shrink-0">
+                  <div className="flex-1 w-full flex items-center gap-2">
+                    <div className="flex-1"><SectionBanner text={pageContent.sec_fac_title || 'บทเพลงประจำคณะ'} variant="calendar" /></div>
+                    
+                    {/* 📌 ปุ่มแก้ชื่อแบนเนอร์ (ติดกับแบนเนอร์) */}
+                    {canManageSongs && (
+                      <button onClick={() => openModal(null, 'editBanners')} title="แก้ไขข้อความแบนเนอร์" className="p-2.5 bg-slate-100/80 text-slate-500 rounded-xl hover:bg-purple-100 hover:text-purple-600 transition shadow-sm border border-slate-200">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                      </button>
+                    )}
+                  </div>
+                  {canManageSongs && (
+                    <button onClick={() => openModal('faculty', 'song')} className="px-5 py-2.5 bg-slate-900 text-white rounded-full text-sm font-bold shadow-md hover:bg-purple-700 shrink-0 flex items-center gap-2 transition-transform hover:-translate-y-0.5">
                       + เพิ่มเพลงคณะ
                     </button>
                   )}
@@ -326,97 +391,122 @@ export default function Songs() {
                 
                 {facultySongs.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto items-start">
-                    {facultySongs.map(song => <SongCard key={song.id} item={song} canManage={canManage} onEdit={openModal} onDelete={handleDeleteSong} />)}
+                    {facultySongs.map(renderSongCard)}
                   </div>
-                ) : <p className="text-center text-slate-500 py-10">ยังไม่มีข้อมูลเพลงในหมวดหมู่นี้</p>}
+                ) : <p className="text-center text-slate-500 py-10 font-medium">ยังไม่มีข้อมูลเพลงในหมวดหมู่นี้</p>}
               </FadeInSection>
             </div>
           </>
         )}
       </div>
 
-      {/* 🔒 Modal Form สำหรับจัดการข้อมูลเพลง */}
+      {/* ---------------- Modal ฟอร์มเพิ่ม/แก้ไข ---------------- */}
       <AnimatePresence>
-        {canManage && showModal && (
+        {canManageSongs && showModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-            <motion.form onSubmit={handleSaveSong} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100">
-              <h3 className="text-xl font-extrabold text-slate-900 mb-4 pb-3 border-b">
-                {editingItem ? 'แก้ไขข้อมูลบทเพลง' : 'เพิ่มบทเพลงใหม่'}
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold">หมวดหมู่</label>
-                  <select className="w-full mt-1 p-2 border rounded-xl" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                    <option value="university">บทเพลงมหาวิทยาลัย</option>
-                    <option value="faculty">บทเพลงประจำคณะ</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold">ชื่อเพลง</label>
-                  <input required className="w-full mt-1 p-2 border rounded-xl" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="เช่น เพลงลูกพระจอม" />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold">เนื้อเพลง (กด Enter เพื่อขึ้นบรรทัดใหม่)</label>
-                  <textarea required rows="10" className="w-full mt-1 p-2 border rounded-xl text-sm" value={formData.lyrics} onChange={e => setFormData({...formData, lyrics: e.target.value})} placeholder="วางเนื้อเพลงที่นี่..." />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold">อัปโหลดโลโก้เพลง (เว้นว่างไว้เพื่อใช้โลโก้มาตรฐานตามหมวดหมู่)</label>
-                  <input type="file" accept="image/*" className="w-full mt-1 p-2 border rounded-xl text-xs bg-slate-50 cursor-pointer" onChange={e => setUploadFile(e.target.files[0])} />
-                  {editingItem && formData.image_url && !uploadFile && (
-                    <p className="text-[10px] text-green-600 mt-1">✓ มีรูปโลโก้เฉพาะอยู่แล้ว (ไม่ต้องเลือกไฟล์ถ้าไม่ต้องการเปลี่ยน)</p>
-                  )}
-                </div>
+            
+            <motion.form
+              onSubmit={handleSave}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative z-10 bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100 space-y-4"
+            >
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <h3 className="text-xl font-extrabold text-slate-900">
+                  {modalType === 'content' ? '✏️ แก้ไขข้อความส่วนหัวหน้า' : 
+                   modalType === 'editBanners' ? '✏️ แก้ไขข้อความแบนเนอร์' : 
+                   (editingItem ? '✏️ แก้ไขข้อมูลบทเพลง' : '✨ เพิ่มบทเพลงใหม่')}
+                </h3>
+                <button type="button" onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-700 font-bold text-xl">✕</button>
               </div>
 
-              <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
-                <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100">ยกเลิก</button>
-                <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-sky-600 disabled:opacity-50">
-                  {submitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
+              {/* โหมด: แก้ไขข้อความส่วนหัว */}
+              {modalType === 'content' ? (
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-1">หัวข้อหน้าเว็บ</label>
+                    <input type="text" value={formData.title || ''} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-1">คำอธิบายใต้หัวข้อ (บรรทัดที่ 1)</label>
+                    <input type="text" value={formData.subtitle || ''} onChange={(e) => setFormData({...formData, subtitle: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-1">คำอธิบาย (บรรทัดที่ 2)</label>
+                    <textarea rows="3" value={formData.description || ''} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl resize-none focus:outline-none focus:border-purple-500"></textarea>
+                  </div>
+                </div>
+              ) : 
+              /* โหมด: แก้ไขข้อความแบนเนอร์ */
+              modalType === 'editBanners' ? (
+                <div className="grid grid-cols-1 gap-4 pt-2">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-1">แบนเนอร์ส่วนมหาวิทยาลัย</label>
+                    <input type="text" value={formData.sec_uni_title || ''} onChange={(e) => setFormData({...formData, sec_uni_title: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-1">แบนเนอร์ส่วนคณะ</label>
+                    <input type="text" value={formData.sec_fac_title || ''} onChange={(e) => setFormData({...formData, sec_fac_title: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
+                  </div>
+                </div>
+              ) : (
+              /* โหมด: จัดการการ์ดเพลง */
+                <div className="space-y-4 pt-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600">หมวดหมู่</label>
+                      <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500">
+                        <option value="university">บทเพลงมหาวิทยาลัย</option>
+                        <option value="faculty">บทเพลงประจำคณะ</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600">ลำดับการแสดงผล</label>
+                      <input type="number" required value={formData.sort_order || 1} onChange={(e) => setFormData({ ...formData, sort_order: e.target.value })} className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-600">ชื่อเพลง *</label>
+                    <input type="text" required value={formData.title || ''} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="เช่น เพลงลูกพระจอม" className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500" />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-600">เนื้อเพลง (กด Enter เพื่อขึ้นบรรทัดใหม่)</label>
+                    <textarea required rows="8" value={formData.lyrics || ''} onChange={e => setFormData({...formData, lyrics: e.target.value})} placeholder="วางเนื้อเพลงที่นี่..." className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500" />
+                  </div>
+
+                  <div className="border border-slate-200 p-4 rounded-xl bg-slate-50">
+                    <label className="block text-sm font-bold text-slate-700 mb-2">โลโก้เพลง (อัปโหลด หรือ วางลิงก์รูป)</label>
+                    <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" />
+                    {isUploading && <p className="text-sm text-purple-600 mt-2 animate-pulse">กำลังอัปโหลดรูปภาพ...</p>}
+                    
+                    <div className="mt-3">
+                      <input type="url" value={formData.image_url || ''} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} placeholder="URL ของรูป (ถ้ามี)" className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-purple-500" />
+                    </div>
+
+                    {formData.image_url && (
+                      <div className="mt-3 pt-3 border-t border-slate-200 flex justify-center">
+                        <img src={formData.image_url} alt="Preview" className="h-16 w-16 object-contain rounded-full shadow-sm bg-white p-1" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 mt-4">
+                <button type="button" onClick={() => setShowModal(false)} disabled={submitting || isUploading} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">ยกเลิก</button>
+                <button type="submit" disabled={submitting || isUploading} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-purple-700 hover:bg-purple-800 disabled:opacity-50 transition-colors flex items-center gap-2">
+                  {(submitting || isUploading) && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
+                  บันทึกข้อมูล
                 </button>
               </div>
             </motion.form>
           </div>
         )}
       </AnimatePresence>
-
-      {/* 🔒 Modal Form สำหรับจัดการข้อความหัวเว็บ */}
-      <AnimatePresence>
-        {canManage && showSettingsModal && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSettingsModal(false)} />
-            <motion.form onSubmit={handleSaveSettings} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative z-10 bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] p-6 md:p-8 shadow-2xl border border-slate-100">
-              <h3 className="text-xl font-extrabold text-slate-900 mb-4 pb-3 border-b">
-                ตั้งค่าข้อความหัวเว็บ
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold">หัวข้อหลัก (Title)</label>
-                  <input required className="w-full mt-1 p-2 border rounded-xl" value={settingsData.title} onChange={e => setSettingsData({...settingsData, title: e.target.value})} />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold">ข้อความบรรยาย (Subtitle)</label>
-                  <textarea required rows="3" className="w-full mt-1 p-2 border rounded-xl text-sm" value={settingsData.subtitle} onChange={e => setSettingsData({...settingsData, subtitle: e.target.value})} />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
-                <button type="button" onClick={() => setShowSettingsModal(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 bg-slate-100">ยกเลิก</button>
-                <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-purple-600 disabled:opacity-50">
-                  {submitting ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
-                </button>
-              </div>
-            </motion.form>
-          </div>
-        )}
-      </AnimatePresence>
-
     </div>
   );
 }

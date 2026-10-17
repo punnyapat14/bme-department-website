@@ -30,17 +30,16 @@ import AlumniDashboard from './pages/Alumni/AlumniDashboard';
 
 // 📌 6. หมวดหมู่อื่นๆ
 import Shop from './pages/Shop';
-import Events from './pages/Events';
+import Events from './pages/Events'; // 👈 ใช้ Events สำหรับหน้าข่าวสารประชาสัมพันธ์
 import Contact from './pages/Contact';
 
 // 📌 7. ระบบสมาชิก (Auth) และหน้า Profile
 import Login from './pages/Login';
 import Register from './pages/Register';
-import RegisterTeacher from './pages/RegisterTeacher';
-import Profile from './pages/Profile'; // 👈 นำเข้าหน้า Profile ที่สร้างไว้
+import Profile from './pages/Profile';
 
 // นำเข้าโลโก้สำหรับใช้ใน Footer
-import bmeLogoBar from './assets/bme_alumni_bar.png';
+import bmeLogoBar from './assets/BME_WebBar.png';
 
 // คอมโพเนนต์สำหรับป้องกันการเข้าถึงหน้า หากยังไม่ได้ล็อกอิน
 const ProtectedRoute = ({ children }) => {
@@ -63,14 +62,16 @@ export default function App() {
             <main className="flex-grow pt-24 lg:pt-28">
               <Routes>
                 <Route path="/" element={<Home />} />
- <Route
-  path="/admin"
-  element={
-    <ProtectedRoute>
-      <AdminPanel />
-    </ProtectedRoute>
-  }
-/>
+                
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute>
+                      <AdminPanel />
+                    </ProtectedRoute>
+                  }
+                />
+                
                 {/* --- หมวดหมู่เกี่ยวกับสาขาวิชา --- */}
                 <Route path="/about" element={<Navigate to="/about/department" replace />} />
                 <Route path="/about/department" element={<Department />} />
@@ -103,9 +104,7 @@ export default function App() {
                 {/* --- หมวดหมู่ Auth และ Dashboard --- */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/register-teacher" element={<RegisterTeacher />} />
                 
-                {/* 👈 เพิ่ม Route สำหรับหน้า Profile โดยให้เข้าได้เฉพาะคนที่ล็อกอินแล้ว */}
                 <Route
                   path="/profile"
                   element={

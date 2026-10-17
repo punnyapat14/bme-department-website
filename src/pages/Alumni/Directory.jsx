@@ -61,7 +61,7 @@ const DonutChart = ({ data, size = 260, strokeWidth = 32, animationDuration = 1.
   );
 };
 
-// 📌 Helper: แปลงลิงก์ Google Drive เป็นรููป (ถ้ามี)
+// 📌 Helper: แปลงลิงก์ Google Drive เป็นรูป
 const formatImageUrl = (url) => {
   if (!url) return '';
   const trimmed = String(url).trim();
@@ -102,9 +102,10 @@ export default function Directory() {
   const [profileForm, setProfileForm] = useState(EMPTY_ALUMNI_FORM);
   const [editingId, setEditingId] = useState(null);
 
-  // ⚙️ State จัดการแอดมิน (ฟอร์มตั้งค่าเพจ)
+  // ⚙️ State จัดการแอดมิน (ฟอร์มตั้งค่าเพจและหมวดหมู่)
   const [showSettingsForm, setShowSettingsForm] = useState(false);
   const [settingsForm, setSettingsForm] = useState({});
+  const [formCategories, setFormCategories] = useState([]); // สำหรับจัดการ categories
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -127,11 +128,12 @@ export default function Directory() {
   const fetchDirectoryData = async () => {
     setLoading(true);
     try {
-      // ดึงการตั้งค่าเว็บ + หมวดหมู่
       const { data: settingsData, error: settingsError } = await supabase.from('alumni_settings').select('*').eq('id', 1).single();
-      if (!settingsError && settingsData) setSettings(settingsData);
+      if (!settingsError && settingsData) {
+          setSettings(settingsData);
+          setFormCategories(settingsData.categories || []);
+      }
 
-      // ดึงข้อมูลศิษย์เก่า
       const { data: profilesData, error: profilesError } = await supabase.from('alumni_profiles').select('*').order('generation', { ascending: true });
       if (profilesError) throw profilesError;
       setAlumniData(profilesData || []);
@@ -233,6 +235,9 @@ export default function Directory() {
       }
       setShowProfileForm(false);
       fetchDirectoryData();
+      if(selectedAlumni && selectedAlumni.id === editingId) {
+          setSelectedAlumni(profileForm); // Update view if editing currently viewed
+      }
     } catch (err) {
       console.error('Save profile error:', err);
       setFormError('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
@@ -253,16 +258,49 @@ export default function Directory() {
     }
   };
 
+  // ⚙️ ฟังก์ชันสำหรับการจัดการ Settings และ Categories
+  const openEditSettings = () => {
+      setSettingsForm(settings);
+      setFormCategories([...(settings.categories || [])]);
+      setFormError('');
+      setShowSettingsForm(true);
+  };
+
+  const handleCategoryChange = (index, field, value) => {
+      const newCats = [...formCategories];
+      newCats[index][field] = value;
+      setFormCategories(newCats);
+  };
+
+  const addCategory = () => {
+      setFormCategories([
+          ...formCategories,
+          { key: 'หมวดหมู่ใหม่', shortLabel: 'ใหม่', subLabel: 'New Category', color: 'hsl(0 0% 50%)', chip: 'bg-slate-100 text-slate-700 border-slate-200' }
+      ]);
+  };
+
+  const removeCategory = (index) => {
+      const newCats = [...formCategories];
+      newCats.splice(index, 1);
+      setFormCategories(newCats);
+  };
+
   const saveSettings = async (e) => {
     e.preventDefault();
+    if (!canManageDirectory) return;
     setSubmitting(true);
     try {
-      const payload = { page_title: settingsForm.page_title, page_subtitle: settingsForm.page_subtitle };
+      const payload = { 
+          page_title: settingsForm.page_title, 
+          page_subtitle: settingsForm.page_subtitle,
+          categories: formCategories // บันทึก categories ที่แก้ไขแล้ว
+      };
       const { error } = await supabase.from('alumni_settings').update(payload).eq('id', 1);
       if (error) throw error;
       setShowSettingsForm(false);
       fetchDirectoryData();
     } catch (err) {
+      console.error(err);
       setFormError('เกิดข้อผิดพลาดในการอัปเดตการตั้งค่า');
     } finally {
       setSubmitting(false);
@@ -270,10 +308,10 @@ export default function Directory() {
   };
 
   // ---------------------------------------------------------------------------
-  // ส่วนที่ 1: ตารางแสดงรายชื่อศิษย์เก่า + Donut Chart
+  // ตัวแปร CSS
   // ---------------------------------------------------------------------------
   const bentoGlass = "rounded-[2.5rem] bg-white/85 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-50 relative overflow-hidden";
-  const subCard = "bg-slate-50/60 rounded-[2rem] border border-slate-100 shadow-sm";
+  const subCard = "bg-slate-50/60 rounded-[2rem] border border-slate-100 shadow-sm relative group"; // เพิ่ม relative และ group สำหรับปุ่มแก้ไข
   const inputClass = 'w-full px-4 py-3 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-purple-400 focus:ring-2 transition-all font-medium text-slate-900 text-sm';
   const labelClass = 'text-xs font-semibold text-slate-500 mb-1 block';
 
@@ -283,32 +321,41 @@ export default function Directory() {
         <AuroraBackground />
         <div className="relative z-10 max-w-[1250px] mx-auto px-4 md:px-6 pt-2">
           
-          <div className="text-center max-w-4xl mx-auto pt-2 pb-10">
+          <div className="text-center max-w-4xl mx-auto pt-2 pb-10 relative group">
+            {/* ⚙️ ปุ่มแก้ไข Header (Admin) */}
+            {canManageDirectory && (
+                <button 
+                    onClick={openEditSettings} 
+                    className="absolute top-0 right-0 bg-white/90 p-2 rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-purple-600 hover:border-purple-300 transition-all opacity-0 group-hover:opacity-100"
+                    title="แก้ไขหัวข้อและคำอธิบาย"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                </button>
+            )}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
               {settings.page_title}
             </h1>
             <p className="font-medium text-slate-600 text-lg leading-relaxed mx-auto max-w-2xl whitespace-pre-line">
               {settings.page_subtitle}
             </p>
-
-            {/* 🔒 ปุ่มแอดมิน */}
-            {canManageDirectory && (
-              <div className="flex flex-wrap justify-center gap-3 mt-7">
-                <button onClick={openCreateProfile} className="px-6 py-3 rounded-full text-sm font-bold text-white bg-slate-900 hover:bg-purple-700 shadow-md shadow-slate-900/20 hover:-translate-y-0.5 transition-all">
-                  + เพิ่มโปรไฟล์ศิษย์เก่า
-                </button>
-                <button onClick={() => { setSettingsForm(settings); setShowSettingsForm(true); setFormError(''); }} className="px-6 py-3 rounded-full text-sm font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm hover:-translate-y-0.5 transition-all">
-                  ⚙️ ตั้งค่าข้อความบนเว็บ
-                </button>
-              </div>
-            )}
           </div>
 
           <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
             <SectionBanner text="ทำเนียบศิษย์เก่า" variant="website" />
 
-            {/* 🍩 Donut Chart */}
-            <div className="my-8 bg-white/95 border border-slate-100 shadow-lg rounded-[2rem] p-6 md:p-10 max-w-4xl mx-auto">
+            {/* 🍩 Donut Chart (รวมปุ่มแก้ไขหมวดหมู่) */}
+            <div className="my-8 bg-white/95 border border-slate-100 shadow-lg rounded-[2rem] p-6 md:p-10 max-w-4xl mx-auto relative group">
+              {/* ⚙️ ปุ่มแก้ไข กราฟ/หมวดหมู่ (Admin) */}
+              {canManageDirectory && (
+                  <button 
+                      onClick={openEditSettings} 
+                      className="absolute top-4 right-4 bg-slate-50 p-2 rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-purple-600 transition-all opacity-0 group-hover:opacity-100 z-10"
+                      title="ตั้งค่าหมวดหมู่สายอาชีพ"
+                  >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  </button>
+              )}
+
               <div className="text-center mb-6">
                 <h2 className="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">สัดส่วนสายอาชีพศิษย์เก่า (Career Breakdown)</h2>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">คลิกที่รายการเพื่อกรองรายชื่อในตาราง</p>
@@ -370,10 +417,23 @@ export default function Directory() {
             {/* ตาราง */}
             <div className="flex items-center justify-between mb-4 px-1">
               <h2 className="text-lg font-black text-slate-800 flex items-center gap-3"><span className="w-1.5 h-6 bg-gradient-to-b from-purple-500 to-indigo-400 rounded-full"></span>รายชื่อศิษย์เก่า</h2>
-              <span className="px-3.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">{filteredAlumni.length} คน</span>
+              
+              <div className="flex gap-2 items-center">
+                  <span className="px-3.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">{filteredAlumni.length} คน</span>
+                  {/* ➕ ปุ่มเพิ่มข้อมูล (Admin) แบบชัดเจน */}
+                  {canManageDirectory && (
+                      <button 
+                          onClick={openCreateProfile} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 hover:bg-purple-700 text-white text-xs font-bold transition-colors shadow-sm cursor-pointer"
+                      >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                          เพิ่มศิษย์เก่า
+                      </button>
+                  )}
+              </div>
             </div>
             
-            <div className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm relative">
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead className="bg-gradient-to-r from-slate-900 via-purple-900 to-rose-700 text-white">
@@ -383,32 +443,45 @@ export default function Directory() {
                       <th className="px-6 py-4 text-left text-xs font-bold">Province</th>
                       <th className="px-6 py-4 text-left text-xs font-bold">Category</th>
                       <th className="px-6 py-4 text-left text-xs font-bold">Title/Company</th>
-                      {canManageDirectory && <th className="px-6 py-4 text-left text-xs font-bold">Manage</th>}
+                      {canManageDirectory && <th className="px-6 py-4 text-right text-xs font-bold">Manage</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredAlumni.map((alumni) => (
-                      <tr key={alumni.id} className={`hover:bg-purple-50/40 transition-colors ${!alumni.is_visible ? 'opacity-60' : ''}`}>
-                        <td className="px-6 py-4 whitespace-nowrap"><span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-rose-400 text-white text-xs font-bold shadow-sm">BME {alumni.generation}</span></td>
-                        <td className="px-6 py-4 whitespace-nowrap"><button onClick={() => setSelectedAlumni(alumni)} className="text-slate-900 hover:text-purple-700 font-bold transition-colors text-sm cursor-pointer text-left">{alumni.name}</button></td>
-                        <td className="px-6 py-4 whitespace-nowrap"><span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">📍 {alumni.province || '-'}</span></td>
-                        <td className="px-6 py-4 whitespace-nowrap"><span className={`px-3 py-1 rounded-full border text-[11px] font-bold ${getCategoryStyle(alumni.category)}`}>{alumni.category}</span></td>
-                        <td className="px-6 py-4 text-sm min-w-[220px]"><span className="font-bold text-slate-800 block">{alumni.position}</span><span className="text-slate-500 text-xs mt-0.5 block font-medium">{alumni.company}</span></td>
-                        {canManageDirectory && (
-                          <td className="px-6 py-4 whitespace-nowrap flex gap-2">
-                            <button onClick={() => openEditProfile(alumni)} className="text-purple-600 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-xs font-bold">แก้ไข</button>
-                            <button onClick={() => deleteProfile(alumni.id, alumni.name)} className="text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-xs font-bold">ลบ</button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
+                    {filteredAlumni.length === 0 ? (
+                        <tr>
+                            <td colSpan={canManageDirectory ? 6 : 5} className="px-6 py-8 text-center text-slate-500">
+                                ไม่พบข้อมูลที่ค้นหา
+                            </td>
+                        </tr>
+                    ) : (
+                        filteredAlumni.map((alumni) => (
+                        <tr key={alumni.id} className={`hover:bg-purple-50/40 transition-colors ${!alumni.is_visible ? 'opacity-60 bg-slate-50' : ''}`}>
+                            <td className="px-6 py-4 whitespace-nowrap"><span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-rose-400 text-white text-xs font-bold shadow-sm">BME {alumni.generation}</span></td>
+                            <td className="px-6 py-4 whitespace-nowrap"><button onClick={() => setSelectedAlumni(alumni)} className="text-slate-900 hover:text-purple-700 font-bold transition-colors text-sm cursor-pointer text-left flex items-center gap-2">{alumni.name} {!alumni.is_visible && <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded">ซ่อน</span>}</button></td>
+                            <td className="px-6 py-4 whitespace-nowrap"><span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">📍 {alumni.province || '-'}</span></td>
+                            <td className="px-6 py-4 whitespace-nowrap"><span className={`px-3 py-1 rounded-full border text-[11px] font-bold ${getCategoryStyle(alumni.category)}`}>{alumni.category}</span></td>
+                            <td className="px-6 py-4 text-sm min-w-[220px]"><span className="font-bold text-slate-800 block">{alumni.position}</span><span className="text-slate-500 text-xs mt-0.5 block font-medium">{alumni.company}</span></td>
+                            {canManageDirectory && (
+                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                <div className="flex gap-2 justify-end">
+                                    <button onClick={() => openEditProfile(alumni)} className="text-slate-500 hover:text-purple-600 bg-slate-100 hover:bg-purple-100 p-1.5 rounded-lg transition-colors cursor-pointer" title="แก้ไข">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                    </button>
+                                    <button onClick={() => deleteProfile(alumni.id, alumni.name)} className="text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-100 p-1.5 rounded-lg transition-colors cursor-pointer" title="ลบ">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </div>
+                            </td>
+                            )}
+                        </tr>
+                        ))
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
         </div>
-        {/* Modals ตรงนี้ใส่ด้านล่างสุด */}
         {renderModals()}
       </div>
     );
@@ -421,19 +494,53 @@ export default function Directory() {
     <div className="relative font-sans text-slate-900 bg-[#fdfcff] min-h-screen pt-16 pb-32">
       <AuroraBackground />
       <div className="relative z-10 max-w-[1250px] mx-auto px-4 md:px-6 pt-2">
-        <button onClick={() => setSelectedAlumni(null)} className="flex items-center text-slate-700 hover:text-white hover:bg-slate-900 mb-6 text-sm font-bold transition-all bg-white/80 backdrop-blur-md border border-slate-200 rounded-full px-5 py-2 w-fit shadow-sm">
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-          ย้อนกลับไปหน้า Directory
-        </button>
+        <div className="flex justify-between items-center mb-6">
+            <button onClick={() => setSelectedAlumni(null)} className="flex items-center text-slate-700 hover:text-white hover:bg-slate-900 text-sm font-bold transition-all bg-white/80 backdrop-blur-md border border-slate-200 rounded-full px-5 py-2 shadow-sm cursor-pointer">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            ย้อนกลับ
+            </button>
+
+            {/* ⚙️ ปุ่มแก้ไข/ลบ ในหน้าโปรไฟล์ (Admin) */}
+            {canManageDirectory && (
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => openEditProfile(selectedAlumni)} 
+                        className="flex items-center gap-1.5 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-sm font-bold border border-purple-200 transition-colors cursor-pointer"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        แก้ไข
+                    </button>
+                    <button 
+                        onClick={() => deleteProfile(selectedAlumni.id, selectedAlumni.name)} 
+                        className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-full text-sm font-bold border border-rose-200 transition-colors cursor-pointer"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        ลบทิ้ง
+                    </button>
+                </div>
+            )}
+        </div>
+
         <div className={`p-6 md:p-10 mb-12 ${bentoGlass}`}>
-          <div className="text-center mb-10 mt-6">
+          <div className="text-center mb-10 mt-6 relative">
+            {!selectedAlumni.is_visible && (
+                <div className="absolute top-0 right-0 bg-rose-100 text-rose-700 text-xs font-bold px-3 py-1 rounded-full border border-rose-200">
+                    ซ่อนจากสาธารณะ
+                </div>
+            )}
             <span className={`inline-block px-4 py-1.5 rounded-full border text-xs font-black uppercase mb-4 ${getCategoryStyle(selectedAlumni.category)}`}>{selectedAlumni.category}</span>
             <h1 className="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 mb-3">{selectedAlumni.name}</h1>
             <p className="text-lg md:text-xl text-slate-600 font-medium">{selectedAlumni.position}</p>
           </div>
           <div className="flex flex-col lg:flex-row gap-8 items-start">
             <div className="w-full lg:w-80 flex-shrink-0 space-y-6">
-              <div className="bg-white p-2 shadow-lg rounded-[2rem] border border-slate-100">
+              <div className="bg-white p-2 shadow-lg rounded-[2rem] border border-slate-100 relative group">
+                {/* ปุ่มแก้ไขรูปภาพ */}
+                {canManageDirectory && (
+                    <button onClick={() => openEditProfile(selectedAlumni)} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full shadow-md text-slate-500 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                )}
                 <img src={formatImageUrl(selectedAlumni.image_url) || "https://placehold.co/400x500?text=BME+Alumni"} alt={selectedAlumni.name} className="w-full h-80 object-cover rounded-[1.6rem] bg-slate-100" />
               </div>
               <div className={`${subCard} p-6`}>
@@ -480,46 +587,118 @@ export default function Directory() {
   function renderModals() {
     return (
       <AnimatePresence>
+        {/* Modal เพิ่ม/แก้ไข โปรไฟล์ */}
         {canManageDirectory && showProfileForm && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/70 backdrop-blur-md" onClick={() => setShowProfileForm(false)} />
             <motion.form onSubmit={saveProfile} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="relative z-10 bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2rem] shadow-2xl">
-              <div className="p-5 border-b sticky top-0 bg-white z-10 flex justify-between"><h3 className="font-black text-lg">{editingId ? 'แก้ไขโปรไฟล์ศิษย์เก่า' : 'เพิ่มโปรไฟล์ใหม่'}</h3><button type="button" onClick={() => setShowProfileForm(false)}>✕</button></div>
-              <div className="p-6 grid grid-cols-2 gap-4">
-                <div><label className={labelClass}>ชื่อ-นามสกุล *</label><input name="name" required value={profileForm.name} onChange={e => setProfileForm(p => ({...p, name: e.target.value}))} className={inputClass} /></div>
-                <div><label className={labelClass}>รุ่น (Generation) *</label><input type="number" required value={profileForm.generation} onChange={e => setProfileForm(p => ({...p, generation: e.target.value}))} className={inputClass} placeholder="เช่น 1, 2, 3" /></div>
+              <div className="p-5 border-b sticky top-0 bg-white z-10 flex justify-between items-center">
+                  <h3 className="font-black text-lg text-slate-800">{editingId ? '✏️ แก้ไขข้อมูลศิษย์เก่า' : '✨ เพิ่มข้อมูลศิษย์เก่าใหม่'}</h3>
+                  <button type="button" onClick={() => setShowProfileForm(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-rose-100 hover:text-rose-600 transition-colors cursor-pointer">✕</button>
+              </div>
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className={labelClass}>ชื่อ-นามสกุล *</label><input name="name" required value={profileForm.name} onChange={e => setProfileForm(p => ({...p, name: e.target.value}))} className={inputClass} placeholder="เช่น สมชาย ใจดี" /></div>
+                <div><label className={labelClass}>รุ่น (Generation) *</label><input type="number" required value={profileForm.generation} onChange={e => setProfileForm(p => ({...p, generation: e.target.value}))} className={inputClass} placeholder="เช่น 15" /></div>
                 <div><label className={labelClass}>หมวดหมู่สายอาชีพ</label>
                   <select value={profileForm.category} onChange={e => setProfileForm(p => ({...p, category: e.target.value}))} className={inputClass}>
-                    {settings.categories.map(c => <option key={c.key} value={c.key}>{c.key}</option>)}
+                    <option value="" disabled>-- เลือกหมวดหมู่ --</option>
+                    {settings.categories && settings.categories.map(c => <option key={c.key} value={c.key}>{c.key}</option>)}
                   </select>
                 </div>
-                <div><label className={labelClass}>ตำแหน่งงาน (Position)</label><input value={profileForm.position} onChange={e => setProfileForm(p => ({...p, position: e.target.value}))} className={inputClass} /></div>
-                <div><label className={labelClass}>บริษัท (Company)</label><input value={profileForm.company} onChange={e => setProfileForm(p => ({...p, company: e.target.value}))} className={inputClass} /></div>
-                <div><label className={labelClass}>จังหวัด (สำหรับการแสดงบนแผนที่)</label><input value={profileForm.province} onChange={e => setProfileForm(p => ({...p, province: e.target.value}))} className={inputClass} placeholder="เช่น กรุงเทพมหานคร" /></div>
-                <div><label className={labelClass}>อายุ</label><input type="number" value={profileForm.age} onChange={e => setProfileForm(p => ({...p, age: e.target.value}))} className={inputClass} /></div>
-                <div><label className={labelClass}>ลิงก์รูปภาพ (Drive/URL)</label><input value={profileForm.image_url} onChange={e => setProfileForm(p => ({...p, image_url: e.target.value}))} className={inputClass} /></div>
-                <div className="col-span-2"><label className={labelClass}>คำอธิบาย / ประสบการณ์</label><textarea rows={3} value={profileForm.description} onChange={e => setProfileForm(p => ({...p, description: e.target.value}))} className={inputClass} /></div>
-                <div className="col-span-2"><label className={labelClass}>Quote (คำคม/แรงบันดาลใจ)</label><input value={profileForm.quote} onChange={e => setProfileForm(p => ({...p, quote: e.target.value}))} className={inputClass} /></div>
-                <label className="col-span-2 flex items-center gap-3"><input type="checkbox" checked={profileForm.is_visible} onChange={e => setProfileForm(p => ({...p, is_visible: e.target.checked}))} className="w-5 h-5 accent-purple-600" /><span className="text-sm font-bold">แสดงโปรไฟล์นี้สู่สาธารณะ</span></label>
-                {formError && <p className="col-span-2 text-rose-600 font-bold text-sm">{formError}</p>}
+                <div><label className={labelClass}>ตำแหน่งงาน (Position)</label><input value={profileForm.position} onChange={e => setProfileForm(p => ({...p, position: e.target.value}))} className={inputClass} placeholder="เช่น Software Engineer" /></div>
+                <div><label className={labelClass}>สถานที่ทำงาน / บริษัท</label><input value={profileForm.company} onChange={e => setProfileForm(p => ({...p, company: e.target.value}))} className={inputClass} placeholder="เช่น Google Thailand" /></div>
+                <div><label className={labelClass}>จังหวัด (สำหรับแสดงจุดบนแผนที่)</label><input value={profileForm.province} onChange={e => setProfileForm(p => ({...p, province: e.target.value}))} className={inputClass} placeholder="เช่น กรุงเทพมหานคร" /></div>
+                <div><label className={labelClass}>อายุ</label><input type="number" value={profileForm.age} onChange={e => setProfileForm(p => ({...p, age: e.target.value}))} className={inputClass} placeholder="ตัวเลข" /></div>
+                <div><label className={labelClass}>ลิงก์รูปภาพ (URL หรือ Google Drive ID)</label><input value={profileForm.image_url} onChange={e => setProfileForm(p => ({...p, image_url: e.target.value}))} className={inputClass} placeholder="วางลิงก์รูปภาพที่นี่" /></div>
+                <div className="md:col-span-2"><label className={labelClass}>คำอธิบาย / ประวัติการทำงาน</label><textarea rows={3} value={profileForm.description} onChange={e => setProfileForm(p => ({...p, description: e.target.value}))} className={inputClass} placeholder="พิมพ์รายละเอียดเพิ่มเติม..." /></div>
+                <div className="md:col-span-2"><label className={labelClass}>คำคม / ข้อคิดในการทำงาน (Quote)</label><input value={profileForm.quote} onChange={e => setProfileForm(p => ({...p, quote: e.target.value}))} className={inputClass} placeholder="เช่น ความพยายามอยู่ที่ไหน..." /></div>
+                
+                <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-200 mt-2">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" checked={profileForm.is_visible} onChange={e => setProfileForm(p => ({...p, is_visible: e.target.checked}))} className="w-5 h-5 accent-purple-600 rounded cursor-pointer" />
+                        <div>
+                            <span className="text-sm font-bold text-slate-800 block">แสดงโปรไฟล์นี้สู่สาธารณะ</span>
+                            <span className="text-xs text-slate-500">หากติ๊กออก จะเห็นเฉพาะแอดมินเท่านั้น</span>
+                        </div>
+                    </label>
+                </div>
+                {formError && <p className="md:col-span-2 text-rose-600 font-bold text-sm bg-rose-50 p-3 rounded-lg">{formError}</p>}
               </div>
-              <div className="p-5 border-t sticky bottom-0 bg-white flex justify-end gap-2"><button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-slate-900">บันทึกข้อมูล</button></div>
+              <div className="p-5 border-t sticky bottom-0 bg-white flex justify-end gap-3 rounded-b-[2rem]">
+                  <button type="button" onClick={() => setShowProfileForm(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-100 cursor-pointer">ยกเลิก</button>
+                  <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-500/30 transition-all cursor-pointer flex items-center gap-2">
+                      {submitting ? 'กำลังบันทึก...' : (editingId ? 'บันทึกการแก้ไข' : 'เพิ่มข้อมูล')}
+                  </button>
+              </div>
             </motion.form>
           </div>
         )}
 
+        {/* Modal ตั้งค่าหน้าเว็บ และ หมวดหมู่ */}
         {canManageDirectory && showSettingsForm && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/70 backdrop-blur-md" onClick={() => setShowSettingsForm(false)} />
-            <motion.form onSubmit={saveSettings} className="relative z-10 bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] shadow-2xl">
-              <div className="p-5 border-b flex justify-between"><h3 className="font-black text-lg">⚙️ ตั้งค่าข้อความหน้า Directory</h3><button type="button" onClick={() => setShowSettingsForm(false)}>✕</button></div>
-              <div className="p-6 space-y-4">
-                <div><label className={labelClass}>หัวข้อหลัก (H1)</label><input value={settingsForm.page_title || ''} onChange={e => setSettingsForm(s => ({...s, page_title: e.target.value}))} className={inputClass} /></div>
-                <div><label className={labelClass}>คำอธิบายย่อย</label><textarea rows={2} value={settingsForm.page_subtitle || ''} onChange={e => setSettingsForm(s => ({...s, page_subtitle: e.target.value}))} className={inputClass} /></div>
-                <p className="text-xs text-rose-500 font-bold">* การแก้ไขหมวดหมู่สายอาชีพและสีสัน ต้องแก้ไขในฐานข้อมูล (Supabase) โดยตรง เนื่องจากมีความซับซ้อนของค่าสีแบบ HSL</p>
-                {formError && <p className="text-rose-600 font-bold text-sm">{formError}</p>}
+            <motion.form onSubmit={saveSettings} className="relative z-10 bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2rem] shadow-2xl flex flex-col">
+              <div className="p-5 border-b sticky top-0 bg-white z-10 flex justify-between items-center">
+                  <h3 className="font-black text-lg flex items-center gap-2">⚙️ ตั้งค่าระบบทำเนียบศิษย์เก่า</h3>
+                  <button type="button" onClick={() => setShowSettingsForm(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-rose-100 hover:text-rose-600 transition-colors cursor-pointer">✕</button>
               </div>
-              <div className="p-5 border-t flex justify-end"><button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-slate-900">บันทึกการตั้งค่า</button></div>
+              
+              <div className="p-6 space-y-6 flex-grow">
+                {/* 1. ตั้งค่าข้อความ */}
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                    <h4 className="font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">1. ข้อความส่วนหัว (Header)</h4>
+                    <div className="space-y-4">
+                        <div><label className={labelClass}>หัวข้อหลัก (H1)</label><input value={settingsForm.page_title || ''} onChange={e => setSettingsForm(s => ({...s, page_title: e.target.value}))} className={inputClass} /></div>
+                        <div><label className={labelClass}>คำอธิบายย่อย</label><textarea rows={2} value={settingsForm.page_subtitle || ''} onChange={e => setSettingsForm(s => ({...s, page_subtitle: e.target.value}))} className={inputClass} /></div>
+                    </div>
+                </div>
+
+                {/* 2. ตั้งค่าหมวดหมู่ */}
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                    <div className="flex justify-between items-end mb-4 border-b border-slate-200 pb-2">
+                        <h4 className="font-bold text-slate-800">2. หมวดหมู่สายอาชีพ (กราฟ Donut)</h4>
+                        <button type="button" onClick={addCategory} className="text-xs font-bold bg-slate-900 hover:bg-purple-600 text-white px-3 py-1.5 rounded-full transition-colors cursor-pointer">+ เพิ่มหมวดหมู่</button>
+                    </div>
+                    
+                    <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
+                        {formCategories.map((cat, idx) => (
+                            <div key={idx} className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm relative group">
+                                <button type="button" onClick={() => removeCategory(idx)} className="absolute top-2 right-2 text-slate-300 hover:text-rose-500 p-1 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" title="ลบหมวดหมู่นี้">✕</button>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">ชื่อเต็ม (ใช้จับคู่ข้อมูล)</label>
+                                        <input value={cat.key} onChange={e => handleCategoryChange(idx, 'key', e.target.value)} className="w-full text-sm p-2 border rounded bg-slate-50 focus:bg-white" />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="flex-1"><label className="text-[10px] font-bold text-slate-500 uppercase">ป้ายในกราฟ (สั้น)</label>
+                                            <input value={cat.shortLabel} onChange={e => handleCategoryChange(idx, 'shortLabel', e.target.value)} className="w-full text-sm p-2 border rounded bg-slate-50 focus:bg-white" />
+                                        </div>
+                                        <div className="w-20"><label className="text-[10px] font-bold text-slate-500 uppercase">สี HSL</label>
+                                            <input value={cat.color} onChange={e => handleCategoryChange(idx, 'color', e.target.value)} className="w-full text-xs p-2 border rounded bg-slate-50 focus:bg-white text-center" placeholder="hsl(0 0% 0%)" />
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">คำอธิบายย่อย (EN)</label>
+                                        <input value={cat.subLabel} onChange={e => handleCategoryChange(idx, 'subLabel', e.target.value)} className="w-full text-sm p-2 border rounded bg-slate-50 focus:bg-white" />
+                                    </div>
+                                    <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-500 uppercase">คลาส CSS ป้ายกำกับ (Tailwind)</label>
+                                        <input value={cat.chip} onChange={e => handleCategoryChange(idx, 'chip', e.target.value)} className="w-full text-xs p-2 border rounded bg-slate-50 focus:bg-white font-mono" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {formError && <p className="text-rose-600 font-bold text-sm text-center">{formError}</p>}
+              </div>
+
+              <div className="p-5 border-t sticky bottom-0 bg-white flex justify-end gap-3 rounded-b-[2rem]">
+                  <button type="button" onClick={() => setShowSettingsForm(false)} className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-600 hover:bg-slate-100 cursor-pointer">ยกเลิก</button>
+                  <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-full text-sm font-bold text-white bg-slate-900 hover:bg-black transition-all cursor-pointer flex items-center gap-2">
+                      {submitting ? 'กำลังบันทึก...' : '💾 บันทึกการตั้งค่าทั้งหมด'}
+                  </button>
+              </div>
             </motion.form>
           </div>
         )}

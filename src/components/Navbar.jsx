@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import bmeLogo from '../assets/bme_community.png';
+import bmeLogo from '../assets/BME_Web2.png';
 
 export default function Navbar() {
   const { user, role, logout } = useAuth();
@@ -92,62 +92,58 @@ export default function Navbar() {
           
           <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
             
-            {/* โซนช่องทางติดต่อ */}
             <div className="hidden lg:flex items-center gap-3 text-purple-800">
-              <a href="mailto:bme.kmutnb.th@gmail.com" className="hover:text-red-600 transition p-1" title="ส่งอีเมล">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+              <a href="mailto:bme.kmutnb.th@gmail.com" className="hover:text-red-600 transition p-1 cursor-pointer" title="ส่งอีเมล">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
               </a>
-              <a href="https://www.facebook.com/search/top?q=bme.kmutnb" target="_blank" rel="noreferrer" className="hover:text-red-600 transition p-1" title="Facebook">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"></path></svg>
+              <a href="https://www.facebook.com/search/top?q=bme.kmutnb" target="_blank" rel="noreferrer" className="hover:text-red-600 transition p-1 cursor-pointer" title="Facebook">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"></path></svg>
               </a>
-              <a href="https://www.instagram.com/bme.kmutnb/" target="_blank" rel="noreferrer" className="hover:text-red-600 transition p-1" title="Instagram">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+              <a href="https://www.instagram.com/bme.kmutnb/" target="_blank" rel="noreferrer" className="hover:text-red-600 transition p-1 cursor-pointer" title="Instagram">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
               </a>
             </div>
 
             <div className="hidden lg:block h-6 w-px bg-gray-300"></div>
 
-            {/* โซนเปลี่ยนภาษา */}
             <div className="flex items-center gap-0.5 sm:gap-1 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-1 shadow-sm">
               {['th', 'en', 'zh'].map((lang) => (
                 <button 
                   key={lang}
                   type="button" 
                   onClick={() => changeLanguage(lang)} 
-                  className={`w-7 sm:w-9 h-6 sm:h-7 flex items-center justify-center rounded transition-colors ${language === lang ? 'bg-gray-100 shadow-inner ring-1 ring-gray-200' : 'hover:bg-gray-50'}`}
+                  className={`w-8 sm:w-9 h-7 sm:h-8 flex items-center justify-center rounded cursor-pointer transition-colors ${language === lang ? 'bg-gray-100 shadow-inner ring-1 ring-gray-200' : 'hover:bg-gray-50'}`}
                 >
-                  <img src={`https://flagcdn.com/w40/${lang === 'en' ? 'us' : lang === 'zh' ? 'cn' : 'th'}.png`} alt={lang.toUpperCase()} className="w-5 sm:w-6 h-3.5 sm:h-4 object-cover rounded-[2px] shadow-sm" />
+                  <img src={`https://flagcdn.com/w40/${lang === 'en' ? 'us' : lang === 'zh' ? 'cn' : 'th'}.png`} alt={lang.toUpperCase()} className="w-5 sm:w-6 h-3.5 sm:h-4 object-cover rounded-[2px] shadow-sm pointer-events-none" />
                 </button>
               ))}
             </div>
 
             <div className="hidden sm:block h-6 w-px bg-gray-300"></div>
 
-            {/* โซน User */}
             <div className="hidden sm:flex items-center gap-2 md:gap-3">
               {user ? (
                 <>
-                  <Link to="/profile" className="text-xs md:text-sm font-medium text-purple-900 border border-purple-900 px-3 md:px-4 py-1.5 rounded hover:bg-purple-50 transition whitespace-nowrap">{t[language].profile}</Link>
-                  <button type="button" onClick={handleLogout} className="text-xs md:text-sm font-medium bg-gray-800 text-white px-3 md:px-4 py-1.5 rounded hover:bg-red-600 transition shadow-sm whitespace-nowrap">{t[language].logout}</button>
+                  <Link to="/profile" className="text-xs md:text-sm font-medium text-purple-900 border border-purple-900 px-3 md:px-4 py-2 rounded-lg hover:bg-purple-50 transition whitespace-nowrap">{t[language].profile}</Link>
+                  <button type="button" onClick={handleLogout} className="text-xs md:text-sm font-medium bg-gray-800 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-red-600 transition shadow-sm whitespace-nowrap cursor-pointer">{t[language].logout}</button>
                 </>
               ) : (
                 <>
-                  <Link to="/register" className="hidden md:inline-block text-xs md:text-sm font-medium text-purple-900 border border-purple-900 px-3 md:px-4 py-1.5 rounded hover:bg-purple-50 transition whitespace-nowrap">{t[language].register}</Link>
-                  <Link to="/login" className="text-xs md:text-sm font-medium bg-gradient-to-r from-purple-900 to-black text-white px-4 md:px-5 py-1.5 rounded hover:from-purple-800 hover:to-red-700 transition shadow-md shadow-purple-900/20 whitespace-nowrap">{t[language].login}</Link>
+                  <Link to="/register" className="hidden md:inline-block text-xs md:text-sm font-medium text-purple-900 border border-purple-900 px-3 md:px-4 py-2 rounded-lg hover:bg-purple-50 transition whitespace-nowrap">{t[language].register}</Link>
+                  <Link to="/login" className="text-xs md:text-sm font-medium bg-gradient-to-r from-purple-900 to-black text-white px-4 md:px-5 py-2 rounded-lg hover:from-purple-800 hover:to-red-700 transition shadow-md shadow-purple-900/20 whitespace-nowrap">{t[language].login}</Link>
                 </>
               )}
             </div>
 
-            {/* ปุ่ม Hamburger Menu */}
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none"
+              className="lg:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none cursor-pointer"
             >
               {isMobileMenuOpen ? (
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
               ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" /></svg>
               )}
             </button>
 
@@ -157,23 +153,21 @@ export default function Navbar() {
 
       {/* ---------------- แถบล่าง: เมนูสำหรับหน้าจอคอม ---------------- */}
       <div className="hidden lg:block relative z-40 border-b border-gray-100 bg-transparent">
-        {/* 📌 แก้ไขให้เป็น justify-center และปรับ gap ให้พอดีขึ้น */}
         <div className="max-w-7xl mx-auto px-6 h-12 flex justify-center items-center gap-3 lg:gap-5 xl:gap-7 text-sm">
           
           <Link to="/" className={getLinkClass('/')}>{t[language].home}</Link>
 
-          {/* เมนู Dropdown: เกี่ยวกับสาขาวิชา */}
           <div className="relative group h-full flex items-center cursor-pointer">
             <span className={`flex items-center h-full border-b-2 border-transparent text-gray-700 group-hover:text-purple-700 group-hover:border-purple-300 px-3 transition-colors font-medium whitespace-nowrap ${location.pathname.startsWith('/about') ? 'border-red-600 text-purple-900 font-bold' : ''}`}>
               {t[language].about}
               <svg className="w-3.5 h-3.5 ml-1.5 text-gray-400 group-hover:text-purple-600 group-hover:-rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </span>
-            <div className="absolute top-full left-0 w-56 bg-[#1f1f1f] rounded-b-xl shadow-xl opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-[110] border-t-[3px] border-red-600 overflow-hidden">
-              <div className="flex flex-col py-2">
-                <Link to="/about/department" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].aboutDept}</Link>
-                <Link to="/about/personnel" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].personnel}</Link>
-                <Link to="/about/symbols" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].symbols}</Link>
-                <Link to="/about/songs" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].songs}</Link>
+            <div className="absolute top-[100%] left-0 w-56 pt-1 opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-[110]">
+              <div className="bg-[#1f1f1f] rounded-b-xl shadow-xl border-t-[3px] border-red-600 overflow-hidden flex flex-col py-2">
+                <Link to="/about/department" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].aboutDept}</Link>
+                <Link to="/about/personnel" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].personnel}</Link>
+                <Link to="/about/symbols" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].symbols}</Link>
+                <Link to="/about/songs" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].songs}</Link>
               </div>
             </div>
           </div>
@@ -181,45 +175,42 @@ export default function Navbar() {
           <Link to="/admission" className={getLinkClass('/admission')}>{t[language].admission}</Link>
           <Link to="/events" className={getLinkClass('/events')}>{t[language].events}</Link>
           
-          {/* เมนู Dropdown: บริการนักศึกษา */}
           <div className="relative group h-full flex items-center cursor-pointer">
             <span className={`flex items-center h-full border-b-2 border-transparent text-gray-700 group-hover:text-purple-700 group-hover:border-purple-300 px-3 transition-colors font-medium whitespace-nowrap ${location.pathname.startsWith('/student-services') ? 'border-red-600 text-purple-900 font-bold' : ''}`}>
               {t[language].services}
               <svg className="w-3.5 h-3.5 ml-1.5 text-gray-400 group-hover:text-purple-600 group-hover:-rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </span>
-            <div className="absolute top-full left-0 w-56 bg-[#1f1f1f] rounded-b-xl shadow-xl opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-[110] border-t-[3px] border-red-600 overflow-hidden">
-              <div className="flex flex-col py-2">
-                <Link to="/student-services/calendar" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].academicCalendar}</Link>
-                <Link to="/student-services/web" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].webServices}</Link>
+            <div className="absolute top-[100%] left-0 w-64 pt-1 opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-[110]">
+              <div className="bg-[#1f1f1f] rounded-b-xl shadow-xl border-t-[3px] border-red-600 overflow-hidden flex flex-col py-2">
+                <Link to="/student-services/calendar" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].academicCalendar}</Link>
+                <Link to="/student-services/web" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].webServices}</Link>
               </div>
             </div>
           </div>
           
-          {/* เมนู Dropdown: แผนการเรียน */}
           <div className="relative group h-full flex items-center cursor-pointer">
             <span className={`flex items-center h-full border-b-2 border-transparent text-gray-700 group-hover:text-purple-700 group-hover:border-purple-300 px-3 transition-colors font-medium whitespace-nowrap ${(location.pathname === '/curriculum' || location.pathname === '/flow') ? 'border-red-600 text-purple-900 font-bold' : ''}`}>
               {t[language].studyPlan}
               <svg className="w-3.5 h-3.5 ml-1.5 text-gray-400 group-hover:text-purple-600 group-hover:-rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </span>
-            <div className="absolute top-full left-0 w-56 bg-[#1f1f1f] rounded-b-xl shadow-xl opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-[110] border-t-[3px] border-red-600 overflow-hidden">
-              <div className="flex flex-col py-2">
-                <Link to="/curriculum" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].curriculumMap}</Link>
-                <Link to="/flow" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].flowSimulator}</Link>
+            <div className="absolute top-[100%] left-0 w-56 pt-1 opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-[110]">
+              <div className="bg-[#1f1f1f] rounded-b-xl shadow-xl border-t-[3px] border-red-600 overflow-hidden flex flex-col py-2">
+                <Link to="/curriculum" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].curriculumMap}</Link>
+                <Link to="/flow" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].flowSimulator}</Link>
               </div>
             </div>
           </div>
 
-          {/* เมนู Dropdown: ศิษย์เก่าสัมพันธ์ */}
           {user && (
             <div className="relative group h-full flex items-center cursor-pointer">
               <span className={`flex items-center h-full border-b-2 border-transparent text-gray-700 group-hover:text-purple-700 group-hover:border-purple-300 px-3 transition-colors font-medium whitespace-nowrap ${location.pathname.startsWith('/alumni') ? 'border-red-600 text-purple-900 font-bold' : ''}`}>
                 {t[language].alumni}
                 <svg className="w-3.5 h-3.5 ml-1.5 text-gray-400 group-hover:text-purple-600 group-hover:-rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
               </span>
-              <div className="absolute top-full left-0 w-56 bg-[#1f1f1f] rounded-b-xl shadow-xl opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-[110] border-t-[3px] border-red-600 overflow-hidden">
-                <div className="flex flex-col py-2">
-                  <Link to="/alumni/database" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].alumniSystem}</Link>
-                  <Link to="/alumni/relations" className="px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].alumniRelations}</Link>
+              <div className="absolute top-[100%] left-0 w-56 pt-1 opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-[110]">
+                <div className="bg-[#1f1f1f] rounded-b-xl shadow-xl border-t-[3px] border-red-600 overflow-hidden flex flex-col py-2">
+                  <Link to="/alumni/database" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].alumniSystem}</Link>
+                  <Link to="/alumni/relations" className="block w-full px-5 py-3 text-gray-300 hover:bg-purple-900 hover:text-white text-sm font-medium transition-colors">{t[language].alumniRelations}</Link>
                 </div>
               </div>
             </div>
@@ -228,7 +219,6 @@ export default function Navbar() {
           <Link to="/shop" className={getLinkClass('/shop')}>{t[language].shop}</Link>
           <Link to="/contact" className={getLinkClass('/contact')}>{t[language].contact}</Link>
           
-          {/* 📌 นำ ml-auto ออก เพื่อไม่ให้เกิดช่องว่างกว้างๆ ผิดปกติ */}
           {user && role === 'admin' && (
             <Link to="/admin" className="flex items-center h-full border-b-2 border-transparent text-red-600 hover:text-red-800 hover:border-red-400 px-3 transition-colors font-bold whitespace-nowrap">
               ⚙️ {t[language].adminPanel}
@@ -246,7 +236,7 @@ export default function Navbar() {
       >
         <div className="px-4 py-4 space-y-2">
           
-          <Link to="/" className="block px-4 py-2.5 rounded-lg font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700">{t[language].home}</Link>
+          <Link to="/" className="block w-full px-4 py-3 rounded-lg font-bold text-gray-800 text-base hover:bg-purple-50 hover:text-purple-700">{t[language].home}</Link>
 
           {[
             { id: 'about', label: t[language].about, links: [
@@ -268,40 +258,47 @@ export default function Navbar() {
               { path: '/alumni/relations', label: t[language].alumniRelations }
             ]}] : [])
           ].map((menu) => (
-            <div key={menu.id}>
-              <button type="button" onClick={() => toggleSubMenu(menu.id)} className="w-full flex justify-between items-center px-4 py-2.5 rounded-lg font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700">
+            <div key={menu.id} className="w-full">
+              <button 
+                type="button" 
+                onClick={() => toggleSubMenu(menu.id)} 
+                className="w-full flex justify-between items-center px-4 py-3 rounded-lg font-bold text-gray-800 text-base hover:bg-purple-50 hover:text-purple-700 cursor-pointer"
+              >
                 <span>{menu.label}</span>
-                <svg className={`w-4 h-4 transition-transform ${openSubMenu === menu.id ? 'rotate-180 text-purple-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                <svg className={`w-5 h-5 transition-transform ${openSubMenu === menu.id ? 'rotate-180 text-purple-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
               </button>
+              
               {openSubMenu === menu.id && (
-                <div className="pl-6 pr-2 py-1 space-y-1 bg-slate-50/50 rounded-lg mt-1">
+                <div className="pl-6 pr-2 py-2 space-y-1 bg-slate-50/50 rounded-lg mt-1 border-l-2 border-purple-200 ml-2">
                   {menu.links.map(link => (
-                    <Link key={link.path} to={link.path} className="block px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50/80">{link.label}</Link>
+                    <Link key={link.path} to={link.path} className="block w-full px-4 py-3 rounded-md text-sm font-medium text-gray-600 hover:text-purple-800 hover:bg-purple-100 transition-colors">
+                      {link.label}
+                    </Link>
                   ))}
                 </div>
               )}
             </div>
           ))}
 
-          <Link to="/admission" className="block px-4 py-2.5 rounded-lg font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700">{t[language].admission}</Link>
-          <Link to="/events" className="block px-4 py-2.5 rounded-lg font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700">{t[language].events}</Link>
-          <Link to="/shop" className="block px-4 py-2.5 rounded-lg font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700">{t[language].shop}</Link>
-          <Link to="/contact" className="block px-4 py-2.5 rounded-lg font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700">{t[language].contact}</Link>
+          <Link to="/admission" className="block w-full px-4 py-3 rounded-lg font-bold text-gray-800 text-base hover:bg-purple-50 hover:text-purple-700">{t[language].admission}</Link>
+          <Link to="/events" className="block w-full px-4 py-3 rounded-lg font-bold text-gray-800 text-base hover:bg-purple-50 hover:text-purple-700">{t[language].events}</Link>
+          <Link to="/shop" className="block w-full px-4 py-3 rounded-lg font-bold text-gray-800 text-base hover:bg-purple-50 hover:text-purple-700">{t[language].shop}</Link>
+          <Link to="/contact" className="block w-full px-4 py-3 rounded-lg font-bold text-gray-800 text-base hover:bg-purple-50 hover:text-purple-700">{t[language].contact}</Link>
 
           {user && role === 'admin' && (
-            <Link to="/admin" className="block px-4 py-2.5 rounded-lg font-bold text-red-600 bg-red-50 hover:bg-red-100">⚙️ {t[language].adminPanel}</Link>
+            <Link to="/admin" className="block w-full px-4 py-3 rounded-lg font-bold text-red-600 text-base bg-red-50 hover:bg-red-100">⚙️ {t[language].adminPanel}</Link>
           )}
 
-          <div className="pt-4 mt-2 border-t border-gray-100 flex flex-col gap-2 sm:hidden">
+          <div className="pt-5 mt-3 border-t border-gray-200 flex flex-col gap-3 sm:hidden">
             {user ? (
               <>
-                <Link to="/profile" className="w-full text-center text-sm font-bold text-purple-900 border border-purple-900 py-2.5 rounded-lg hover:bg-purple-50">{t[language].profile}</Link>
-                <button type="button" onClick={handleLogout} className="w-full text-center text-sm font-bold bg-gray-800 text-white py-2.5 rounded-lg hover:bg-red-600">{t[language].logout}</button>
+                <Link to="/profile" className="w-full text-center text-sm font-bold text-purple-900 border-2 border-purple-900 py-3 rounded-lg hover:bg-purple-50">{t[language].profile}</Link>
+                <button type="button" onClick={handleLogout} className="w-full text-center text-sm font-bold bg-gray-800 text-white py-3 rounded-lg hover:bg-red-600 cursor-pointer">{t[language].logout}</button>
               </>
             ) : (
               <>
-                <Link to="/register" className="w-full text-center text-sm font-bold text-purple-900 border border-purple-900 py-2.5 rounded-lg hover:bg-purple-50">{t[language].register}</Link>
-                <Link to="/login" className="w-full text-center text-sm font-bold bg-gradient-to-r from-purple-900 to-black text-white py-2.5 rounded-lg">{t[language].login}</Link>
+                <Link to="/register" className="w-full text-center text-sm font-bold text-purple-900 border-2 border-purple-900 py-3 rounded-lg hover:bg-purple-50">{t[language].register}</Link>
+                <Link to="/login" className="w-full text-center text-sm font-bold bg-gradient-to-r from-purple-900 to-black text-white py-3 rounded-lg">{t[language].login}</Link>
               </>
             )}
           </div>

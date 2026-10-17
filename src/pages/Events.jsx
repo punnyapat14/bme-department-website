@@ -1,16 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from "../supabaseClient";
 
-// 📌 นำเข้า Component พื้นหลังและแบนเนอร์ (อ้างอิงตามที่คุณมี)
+// 📌 นำเข้า Component พื้นหลังและแบนเนอร์
 import { AuroraBackground, SectionBanner } from '../components/ThemeElements';
 
-// ==========================================
-// 📌 Config Supabase
-// ==========================================
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
+// 📌 ดึงข้อมูลจาก Context อย่างถูกต้อง
+import { useAuth } from "../contexts/AuthContext";
 
 // ==========================================
 // 📌 Component: ระบบ Fade-in เวลาเลื่อนจอ
@@ -37,6 +33,43 @@ const FadeInSection = ({ children, delay = "0s", className = "" }) => {
 };
 
 // ==========================================
+// 📌 ปุ่มแก้ไข (Edit / Delete) มาตรฐาน
+// ==========================================
+const ActionButtons = ({ onEdit, onDelete, positionClass = "top-2 right-2", hideDelete = false }) => (
+  <div className={`absolute ${positionClass} flex gap-1.5 z-30`}>
+    {onEdit && (
+      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(); }} className="p-1.5 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-colors" title="แก้ไข">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+      </button>
+    )}
+    {!hideDelete && onDelete && (
+      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); }} className="p-1.5 bg-rose-500 text-white rounded-lg shadow-md hover:bg-rose-600 transition-colors" title="ลบทิ้ง">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+      </button>
+    )}
+  </div>
+);
+
+// 🛠️ Helper: แปลงรูปแบบวันที่ที่เลือกจาก Date Picker ให้แสดงผลเป็นภาษาไทย
+const formatDateTH = (dateStr) => {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  return dateStr;
+};
+
+// 🛠️ Helper: จัดการแสดงผลวันที่แบบ "ช่วงเวลา" (Start - End)
+const formatDateRangeTH = (startStr, endStr) => {
+  if (!startStr) return '';
+  const startTH = formatDateTH(startStr);
+  if (!endStr || startStr === endStr) return startTH; 
+  const endTH = formatDateTH(endStr);
+  return `${startTH} - ${endTH}`;
+};
+
+// ==========================================
 // 📌 Component: การ์ดข่าวย่อย (Mini Card)
 // ==========================================
 const EventCard = ({ event, isAdmin, onEdit, onDelete }) => (
@@ -49,29 +82,26 @@ const EventCard = ({ event, isAdmin, onEdit, onDelete }) => (
     className="rounded-3xl bg-white/80 backdrop-blur-xl border border-white/80 shadow-sm hover:shadow-[0_15px_30px_rgba(147,51,234,0.08)] hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full relative group"
   >
     {isAdmin && (
-      <div className="absolute top-2 right-2 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => onEdit(event, 'Events')} className="p-2 bg-blue-500/90 text-white rounded-lg shadow-md hover:bg-blue-600 transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-        </button>
-        <button onClick={() => onDelete(event.id, 'Events')} className="p-2 bg-rose-500/90 text-white rounded-lg shadow-md hover:bg-rose-600 transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-        </button>
-      </div>
+      <ActionButtons 
+        onEdit={() => onEdit(event, 'Events')} 
+        onDelete={() => onDelete(event.id, 'Events')} 
+        positionClass="top-3 right-3 scale-95" 
+      />
     )}
 
     <div className="h-48 bg-slate-100 overflow-hidden relative cursor-pointer shrink-0">
-      <img src={event.image || 'https://via.placeholder.com/800x600?text=No+Image'} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+      <img src={event.image || 'https://via.placeholder.com/800x600?text=No+Image'} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" onError={(e)=>{e.target.src="https://via.placeholder.com/800x600?text=No+Image"}} />
       <span className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-800 shadow-sm">
         {event.category || 'อื่นๆ'}
       </span>
     </div>
     
     <div className="p-6 flex flex-col flex-1">
-      <p className="text-[12px] font-semibold text-slate-500 mb-2">{event.date}</p>
+      <p className="text-[12px] font-semibold text-slate-500 mb-2">{formatDateRangeTH(event.date, event.end_date)}</p>
       <h3 className="text-[16px] font-extrabold text-slate-900 leading-snug mb-3 line-clamp-2 hover:text-indigo-700 transition-colors cursor-pointer">
         {event.title}
       </h3>
-      <p className="text-[13px] text-slate-600 mb-4 line-clamp-2 leading-relaxed">{event.desc}</p>
+      <p className="text-[13px] text-slate-600 mb-4 line-clamp-2 leading-relaxed">{event.description}</p>
       <div className="mt-auto">
         <button className="text-[12px] font-bold text-slate-800 hover:text-indigo-800 transition-colors flex items-center gap-1 group/btn">
           อ่านต่อ 
@@ -83,13 +113,22 @@ const EventCard = ({ event, isAdmin, onEdit, onDelete }) => (
 );
 
 export default function Events() {
+  const { user } = useAuth();
+  
+  const [pageSettings, setPageSettings] = useState({
+    header_title: 'ข่าวสารประชาสัมพันธ์',
+    latest_banner: 'ข่าวประชาสัมพันธ์ล่าสุด', // 📌 เพิ่มตัวแปรสำหรับแบนเนอร์ล่าสุด
+    academic_banner: 'ข่าวประชาสัมพันธ์วิชาการ',
+    activity_banner: 'ข่าวประชาสัมพันธ์กิจกรรม',
+    timeline_title: 'กำหนดการเร็วๆ นี้'
+  });
+
   const [eventsData, setEventsData] = useState([]);
   const [timelineData, setTimelineData] = useState([]);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState('Events'); 
   const [isSaving, setIsSaving] = useState(false);
@@ -97,31 +136,37 @@ export default function Events() {
   
   const [formData, setFormData] = useState({});
 
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [settingsModalType, setSettingsModalType] = useState('header'); 
+  const [settingsForm, setSettingsForm] = useState({});
+
+  const canManage = useMemo(() => {
+    if (!user) return false;
+    const role = String(user.role || '').toLowerCase();
+    const metaRole = String(user.user_metadata?.role || '').toLowerCase();
+    const email = String(user.email || '').toLowerCase();
+    
+    return (
+      ['admin', 'faculty', 'teacher', 'staff', 'instructor'].includes(role) ||
+      ['admin', 'faculty', 'teacher', 'staff', 'instructor'].includes(metaRole) ||
+      user.isAdmin === true ||
+      email.endsWith('@sci.kmutnb.ac.th') || email.endsWith('@email.kmutnb.ac.th') || email === 'bme.kmutnb.th@gmail.com'
+    );
+  }, [user]);
+
   useEffect(() => {
     window.scrollTo(0, 0);
 
-    const checkAdmin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) setIsAdmin(true);
-    };
-
     const fetchData = async () => {
       try {
-        // ดึงข้อมูล ข่าวสาร จาก Supabase
-        const { data: events, error: eventsError } = await supabase
-          .from('events')
-          .select('*')
-          .order('created_at', { ascending: false }); // ใหม่สุดขึ้นก่อน
-          
+        const { data: settingsData } = await supabase.from('event_page_settings').select('*').eq('id', 1).maybeSingle();
+        if (settingsData) setPageSettings(settingsData);
+
+        const { data: events, error: eventsError } = await supabase.from('events').select('*').order('created_at', { ascending: false }); 
         if (eventsError) throw eventsError;
         if (events) setEventsData(events);
 
-        // ดึงข้อมูล กำหนดการ จาก Supabase
-        const { data: timelines, error: timelinesError } = await supabase
-          .from('timelines')
-          .select('*')
-          .order('created_at', { ascending: true }); // เรียงตามวันที่ลง (หรือจะเรียงตามอื่นก็ได้)
-
+        const { data: timelines, error: timelinesError } = await supabase.from('timelines').select('*').order('created_at', { ascending: true }); 
         if (timelinesError) throw timelinesError;
         if (timelines) setTimelineData(timelines);
 
@@ -132,9 +177,29 @@ export default function Events() {
       }
     };
 
-    checkAdmin();
     fetchData();
   }, []);
+
+  const handleOpenSettings = (type) => {
+    setSettingsModalType(type);
+    setSettingsForm(pageSettings);
+    setIsSettingsModalOpen(true);
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('event_page_settings').upsert({ id: 1, ...settingsForm });
+      if (error) throw error;
+      setPageSettings(settingsForm);
+      setIsSettingsModalOpen(false);
+    } catch (err) {
+      alert('บันทึกการตั้งค่าไม่สำเร็จ');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleOpenModal = (item = null, type = 'Events') => {
     setModalType(type);
@@ -142,7 +207,7 @@ export default function Events() {
       setFormData(item);
     } else {
       if (type === 'Events') {
-        setFormData({ id: '', category: 'กิจกรรม', date: '', title: '', desc: '', image: '' });
+        setFormData({ id: '', category: 'กิจกรรม', date: '', end_date: '', title: '', description: '', image: '' });
       } else {
         setFormData({ id: '', short_date: '', title: '', theme: 'slate' });
       }
@@ -154,7 +219,6 @@ export default function Events() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 📌 ฟังก์ชันอัปโหลดรูปภาพเข้า Supabase Storage
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -165,13 +229,10 @@ export default function Events() {
     const filePath = `events-images/${fileName}`;
 
     try {
-      const { error: uploadError } = await supabase.storage
-        .from('images') // ชื่อ Bucket ที่เราสร้าง
-        .upload(filePath, file);
-
+      const { error: uploadError } = await supabase.storage.from('EVENT').upload(filePath, file);
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+      const { data } = supabase.storage.from('EVENT').getPublicUrl(filePath);
       setFormData({ ...formData, image: data.publicUrl });
     } catch (error) {
       console.error('Upload Error:', error);
@@ -181,7 +242,8 @@ export default function Events() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e) => {
+    e.preventDefault();
     if (!formData.title) return alert("กรุณากรอกหัวข้อ");
     setIsSaving(true);
     
@@ -190,24 +252,22 @@ export default function Events() {
         const payload = {
           category: formData.category,
           date: formData.date,
+          end_date: formData.end_date || null,
           title: formData.title,
-          desc: formData.desc,
+          description: formData.description, 
           image: formData.image
         };
 
         if (formData.id) {
-          // Update ข่าวสาร
           const { data, error } = await supabase.from('events').update(payload).eq('id', formData.id).select();
           if (error) throw error;
           setEventsData(eventsData.map(ev => ev.id === formData.id ? data[0] : ev));
         } else {
-          // Create ข่าวสาร
           const { data, error } = await supabase.from('events').insert([payload]).select();
           if (error) throw error;
           setEventsData([data[0], ...eventsData]);
         }
       } else {
-        // จัดการหน้ากำหนดการ (Calendar)
         const payload = {
           short_date: formData.short_date,
           title: formData.title,
@@ -215,12 +275,10 @@ export default function Events() {
         };
 
         if (formData.id) {
-          // Update กำหนดการ
           const { data, error } = await supabase.from('timelines').update(payload).eq('id', formData.id).select();
           if (error) throw error;
           setTimelineData(timelineData.map(tl => tl.id === formData.id ? data[0] : tl));
         } else {
-          // Create กำหนดการ
           const { data, error } = await supabase.from('timelines').insert([payload]).select();
           if (error) throw error;
           setTimelineData([...timelineData, data[0]]);
@@ -257,12 +315,11 @@ export default function Events() {
   const latestEvent = eventsData.length > 0 ? eventsData[0] : null;
   const searchFilter = (e) => {
     if (!searchTerm) return true;
-    return (e.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || ((e.desc || '').toLowerCase().includes(searchTerm.toLowerCase()));
+    return (e.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || ((e.description || '').toLowerCase().includes(searchTerm.toLowerCase()));
   };
 
-  const remainingEvents = eventsData.filter(e => e.id !== (latestEvent ? latestEvent.id : null));
-  const academicEvents = remainingEvents.filter(e => e.category === 'วิชาการ' && searchFilter(e));
-  const activityEvents = remainingEvents.filter(e => e.category === 'กิจกรรม' && searchFilter(e));
+  const academicEvents = eventsData.filter(e => e.category === 'วิชาการ' && searchFilter(e));
+  const activityEvents = eventsData.filter(e => e.category === 'กิจกรรม' && searchFilter(e));
 
   const bentoGlass = "rounded-[2.5rem] bg-white/85 backdrop-blur-2xl border border-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(147,51,234,0.08)] transition-all duration-500 relative overflow-hidden";
   const miniBentoGlass = "rounded-3xl bg-white/80 backdrop-blur-xl border border-white/80 shadow-sm hover:shadow-[0_15px_30px_rgba(147,51,234,0.08)] transition-all duration-300";
@@ -281,121 +338,171 @@ export default function Events() {
 
       <div className="relative z-10 max-w-[1250px] mx-auto px-4 md:px-6 pt-2">
         <FadeInSection delay="0.1s">
-          <div className="text-center max-w-4xl mx-auto pt-2 pb-6">
+          <div className="text-center max-w-4xl mx-auto pt-2 pb-6 relative group">
+            {canManage && (
+              <ActionButtons onEdit={() => handleOpenSettings('header')} positionClass="-top-2 right-0 md:-right-8" hideDelete={true} />
+            )}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-800 to-rose-600 drop-shadow-sm">
-              ข่าวสารประชาสัมพันธ์
+              {pageSettings.header_title}
             </h1>
           </div>
         </FadeInSection>
 
-        {/* 📌 Admin Buttons */}
-        {isAdmin && (
-            <div className="flex justify-center gap-4 mb-10">
-                <button onClick={() => handleOpenModal(null, 'Events')} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-                    เพิ่มข่าวสาร/กิจกรรม
-                </button>
-            </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
-          {/* 📌 คอลัมน์ซ้าย: เนื้อหาข่าวสาร */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12 mt-6">
           <div className="lg:col-span-2 flex flex-col gap-12">
             
-            {/* ข่าวล่าสุด */}
             {latestEvent && (
                 <FadeInSection delay="0.2s">
-                <div className="mb-6"><SectionBanner text="ข่าวประชาสัมพันธ์ล่าสุด" variant="exam" /></div>
-                <div className={`flex flex-col md:flex-row w-full ${bentoGlass} group/latest`}>
-                    {isAdmin && (
-                        <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover/latest:opacity-100 transition-opacity">
-                            <button onClick={() => handleOpenModal(latestEvent, 'Events')} className="p-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
-                            <button onClick={() => handleDelete(latestEvent.id, 'Events')} className="p-2 bg-rose-500 text-white rounded-lg shadow-md hover:bg-rose-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                        </div>
+                {/* 📌 แบนเนอร์ข่าวล่าสุด เพิ่มปุ่มแก้ไขด้านขวาเหมือนอันอื่นแล้ว */}
+                <div className="mb-6 flex items-center gap-3 w-full group relative">
+                  <div className="flex-1 w-full">
+                    <SectionBanner text={pageSettings.latest_banner || 'ข่าวประชาสัมพันธ์ล่าสุด'} variant="exam" />
+                  </div>
+                  {canManage && (
+                    <button 
+                      type="button" 
+                      onClick={() => { setSettingsModalType('latest_banner'); setSettingsForm(pageSettings); setIsSettingsModalOpen(true); }}
+                      className="p-2.5 bg-white text-slate-500 rounded-xl hover:bg-purple-100 hover:text-purple-600 transition shadow-sm border border-slate-200 shrink-0 mb-8 md:mb-12"
+                      title="แก้ไขข้อความแบนเนอร์"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    </button>
+                  )}
+                </div>
+
+                <div className={`flex flex-col md:flex-row w-full ${bentoGlass} relative`}>
+                    {canManage && (
+                      <ActionButtons 
+                        onEdit={() => handleOpenModal(latestEvent, 'Events')} 
+                        onDelete={() => handleDelete(latestEvent.id, 'Events')} 
+                        positionClass="top-4 right-4 scale-95" 
+                      />
                     )}
+
                     <div className="md:w-5/12 bg-slate-100 relative overflow-hidden min-h-[280px]">
-                      <img src={latestEvent.image || 'https://via.placeholder.com/800x600?text=No+Image'} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/latest:scale-105" alt="Latest" />
+                      <img src={latestEvent.image || 'https://via.placeholder.com/800x600?text=No+Image'} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-105" alt="Latest" onError={(e)=>{e.target.src="https://via.placeholder.com/800x600?text=No+Image"}} />
                     </div>
-                    <div className="p-8 md:w-7/12 flex flex-col justify-center">
-                      <p className="text-slate-500 font-extrabold text-[11px] mb-2">{latestEvent.date}</p>
-                      <h2 className="text-2xl font-extrabold text-slate-900 mb-4">{latestEvent.title}</h2>
-                      <p className="text-slate-600 mb-8 line-clamp-3">{latestEvent.desc}</p>
+                    <div className="p-8 md:w-7/12 flex flex-col justify-center relative">
+                      <p className="text-slate-500 font-extrabold text-[11px] mb-2">{formatDateRangeTH(latestEvent.date, latestEvent.end_date)}</p>
+                      <h2 className="text-2xl font-extrabold text-slate-900 mb-4 pr-16">{latestEvent.title}</h2>
+                      <p className="text-slate-600 mb-8 line-clamp-3">{latestEvent.description}</p>
                     </div>
                 </div>
                 </FadeInSection>
             )}
 
-            {/* ช่องค้นหา */}
             <FadeInSection delay="0.25s">
-              <input type="text" placeholder="ค้นหาประกาศ ข่าวสาร หรือกิจกรรม..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-6 pr-6 py-4 bg-white/70 backdrop-blur-xl shadow-sm rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/70 backdrop-blur-xl shadow-sm rounded-2xl border border-slate-200 p-2">
+                <div className="relative flex-1 w-full">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  </div>
+                  <input type="text" placeholder="ค้นหาประกาศ ข่าวสาร หรือกิจกรรม..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-transparent focus:outline-none text-slate-700 font-medium" />
+                </div>
+                {canManage && (
+                  <button onClick={() => handleOpenModal(null, 'Events')} className="w-full sm:w-auto px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-md hover:bg-purple-700 whitespace-nowrap transition-colors flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg>
+                    เพิ่มข่าวใหม่
+                  </button>
+                )}
+              </div>
             </FadeInSection>
 
-            {/* ข่าววิชาการ */}
             <FadeInSection delay="0.3s">
-              <div className="mb-6"><SectionBanner text="ข่าวประชาสัมพันธ์วิชาการ" variant="website" /></div>
+              <div className="mb-6 flex items-center gap-3 w-full group relative">
+                <div className="flex-1 w-full">
+                  <SectionBanner text={pageSettings.academic_banner} variant="website" />
+                </div>
+                {canManage && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setSettingsModalType('academic_banner'); setSettingsForm(pageSettings); setIsSettingsModalOpen(true); }}
+                    className="p-2.5 bg-white text-slate-500 rounded-xl hover:bg-purple-100 hover:text-purple-600 transition shadow-sm border border-slate-200 shrink-0 mb-8 md:mb-12"
+                    title="แก้ไขข้อความแบนเนอร์"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                  </button>
+                )}
+              </div>
               <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <AnimatePresence mode="popLayout">
-                  {academicEvents.map(event => <EventCard key={event.id} event={event} isAdmin={isAdmin} onEdit={handleOpenModal} onDelete={handleDelete}/>)}
+                  {academicEvents.map(event => <EventCard key={event.id} event={event} isAdmin={canManage} onEdit={handleOpenModal} onDelete={handleDelete}/>)}
                 </AnimatePresence>
                 {academicEvents.length === 0 && <p className="text-slate-500 text-sm">ไม่มีข่าววิชาการในขณะนี้</p>}
               </motion.div>
             </FadeInSection>
 
-            {/* ข่าวกิจกรรม */}
             <FadeInSection delay="0.4s">
-              <div className="mb-6"><SectionBanner text="ข่าวประชาสัมพันธ์กิจกรรม" variant="calendar" /></div>
+              <div className="mb-6 flex items-center gap-3 w-full group relative">
+                <div className="flex-1 w-full">
+                  <SectionBanner text={pageSettings.activity_banner} variant="calendar" />
+                </div>
+                {canManage && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setSettingsModalType('activity_banner'); setSettingsForm(pageSettings); setIsSettingsModalOpen(true); }}
+                    className="p-2.5 bg-white text-slate-500 rounded-xl hover:bg-purple-100 hover:text-purple-600 transition shadow-sm border border-slate-200 shrink-0 mb-8 md:mb-12"
+                    title="แก้ไขข้อความแบนเนอร์"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                  </button>
+                )}
+              </div>
               <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <AnimatePresence mode="popLayout">
-                  {activityEvents.map(event => <EventCard key={event.id} event={event} isAdmin={isAdmin} onEdit={handleOpenModal} onDelete={handleDelete}/>)}
+                  {activityEvents.map(event => <EventCard key={event.id} event={event} isAdmin={canManage} onEdit={handleOpenModal} onDelete={handleDelete}/>)}
                 </AnimatePresence>
                 {activityEvents.length === 0 && <p className="text-slate-500 text-sm">ไม่มีข่าวกิจกรรมในขณะนี้</p>}
               </motion.div>
             </FadeInSection>
           </div>
 
-          {/* 📌 คอลัมน์ขวา: Sidebar (Timeline) */}
           <div className="lg:col-span-1 flex flex-col gap-8">
             <div className="sticky top-24 flex flex-col gap-8">
               
-              <div className={`p-8 ${miniBentoGlass}`}>
-                <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200/60">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-800 border border-slate-200">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    </div>
-                    <h3 className="text-[18px] font-extrabold text-slate-900">กำหนดการเร็วๆ นี้</h3>
-                  </div>
-                  {isAdmin && (
-                    <button onClick={() => handleOpenModal(null, 'Calendar')} className="text-purple-600 hover:text-purple-800 bg-purple-50 p-1.5 rounded-md text-sm font-bold transition-colors hover:bg-purple-100">
-                      + เพิ่ม
-                    </button>
-                  )}
-                </div>
+              <div className={`p-8 ${miniBentoGlass} relative`}>
+                
+                {canManage && <ActionButtons onEdit={() => { setSettingsModalType('timeline_title'); setSettingsForm(pageSettings); setIsSettingsModalOpen(true); }} positionClass="top-4 right-4" hideDelete={true} />}
 
-                <div className="relative pl-6 before:absolute before:inset-0 before:left-[5px] before:w-0.5 before:bg-slate-200 before:h-full">
+                <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200/60 pr-10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-800 border border-slate-200 shadow-sm">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <h3 className="text-[18px] font-extrabold text-slate-900 leading-snug">{pageSettings.timeline_title}</h3>
+                  </div>
+                </div>
+                
+                {canManage && (
+                  <button onClick={() => handleOpenModal(null, 'Calendar')} className="w-full mb-6 px-3 py-2.5 bg-white text-purple-600 rounded-xl text-xs font-bold hover:bg-purple-50 transition-colors shadow-sm border border-slate-200 border-dashed flex justify-center">
+                    + เพิ่มกำหนดการ
+                  </button>
+                )}
+
+                <div className="relative pl-6 before:absolute before:inset-0 before:left-[5px] before:w-0.5 before:bg-slate-200 before:h-full mt-4">
                   {timelineData.slice(0, 5).map((item) => (
-                    <div key={item.id} className="relative mb-6 last:mb-0 group/timeline">
+                    <div key={item.id} className="relative mb-6 last:mb-0 group/timeline pr-14">
                       <div className={`absolute -left-[27.5px] top-1 w-3.5 h-3.5 rounded-full ring-4 ring-white ${item.theme === 'rose' ? 'bg-rose-500' : 'bg-slate-400'}`}></div>
                       <div>
-                        <p className="text-[12px] font-bold text-slate-500 mb-0.5">{item.short_date}</p>
+                        <p className="text-[12px] font-bold text-slate-500 mb-0.5">{formatDateTH(item.short_date)}</p>
                         <p className={`text-[14px] leading-snug ${item.theme === 'rose' ? 'font-extrabold text-slate-900' : 'font-medium text-slate-700'}`}>
                           {item.title}
                         </p>
                       </div>
                       
-                      {/* Admin Edit/Delete สำหรับแต่ละกำหนดการ */}
-                      {isAdmin && (
-                        <div className="absolute right-0 top-0 flex gap-1 opacity-0 group-hover/timeline:opacity-100 transition-opacity bg-white/80 backdrop-blur-sm rounded-md px-1">
-                          <button onClick={() => handleOpenModal(item, 'Calendar')} className="p-1 text-blue-500 hover:text-blue-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
-                          <button onClick={() => handleDelete(item.id, 'Calendar')} className="p-1 text-rose-500 hover:text-rose-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                        </div>
+                      {canManage && (
+                        <ActionButtons 
+                          onEdit={() => handleOpenModal(item, 'Calendar')} 
+                          onDelete={() => handleDelete(item.id, 'Calendar')} 
+                          positionClass="-top-1 -right-2 scale-75" 
+                        />
                       )}
                     </div>
                   ))}
                   {timelineData.length === 0 && <p className="text-sm text-slate-400">ยังไม่มีกำหนดการ</p>}
                 </div>
                 
-                <a href="/services" className="w-full mt-8 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-[13px] font-bold hover:bg-slate-50 hover:text-slate-900 transition-colors flex justify-center items-center">
+                <a href="/services" className="w-full mt-8 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-[13px] font-bold hover:bg-slate-50 hover:text-slate-900 transition-colors flex justify-center items-center shadow-sm">
                   ดูปฏิทินการศึกษาทั้งหมด
                 </a>
               </div>
@@ -404,91 +511,168 @@ export default function Events() {
         </div>
       </div>
 
-      {/* ================= Admin Modal (ใช้ร่วมกัน 2 แท็บ) ================= */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 border-b pb-4">
-              {formData.id ? 'แก้ไขข้อมูล' : 'เพิ่มข้อมูลใหม่'} ({modalType === 'Events' ? 'ข่าวสาร' : 'กำหนดการ'})
-            </h2>
+      <AnimatePresence>
+      {isSettingsModalOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.form 
+            onSubmit={handleSaveSettings}
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            exit={{ opacity: 0, scale: 0.95 }} 
+            className="bg-white rounded-[2rem] w-full max-w-xl flex flex-col shadow-2xl"
+          >
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center shrink-0">
+              <h2 className="text-xl font-extrabold text-slate-800">✏️ แก้ไขข้อความหน้าเว็บ</h2>
+              <button type="button" onClick={() => setIsSettingsModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold text-xl p-2 rounded-full hover:bg-slate-100 transition-colors">✕</button>
+            </div>
             
-            <div className="space-y-4">
+            <div className="p-6">
+              {settingsModalType === 'header' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">หัวข้อหลักเว็บ</label>
+                  <input type="text" value={settingsForm.header_title || ''} onChange={e => setSettingsForm({...settingsForm, header_title: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" />
+                </div>
+              )}
+              {/* 📌 เพิ่ม Modal สำหรับแก้แบนเนอร์ข่าวล่าสุด */}
+              {settingsModalType === 'latest_banner' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">ชื่อแบนเนอร์ข่าวล่าสุด</label>
+                  <input type="text" value={settingsForm.latest_banner || ''} onChange={e => setSettingsForm({...settingsForm, latest_banner: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" />
+                </div>
+              )}
+              {settingsModalType === 'academic_banner' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">ชื่อแบนเนอร์ข่าววิชาการ</label>
+                  <input type="text" value={settingsForm.academic_banner || ''} onChange={e => setSettingsForm({...settingsForm, academic_banner: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" />
+                </div>
+              )}
+              {settingsModalType === 'activity_banner' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">ชื่อแบนเนอร์ข่าวกิจกรรม</label>
+                  <input type="text" value={settingsForm.activity_banner || ''} onChange={e => setSettingsForm({...settingsForm, activity_banner: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" />
+                </div>
+              )}
+              {settingsModalType === 'timeline_title' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">หัวข้อกระดานกำหนดการ</label>
+                  <input type="text" value={settingsForm.timeline_title || ''} onChange={e => setSettingsForm({...settingsForm, timeline_title: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" />
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0 rounded-b-[2rem]">
+              <button type="button" onClick={() => setIsSettingsModalOpen(false)} disabled={isSaving} className="px-5 py-2.5 rounded-full text-slate-600 font-bold hover:bg-slate-200 transition-colors text-sm border border-transparent hover:border-slate-300">ยกเลิก</button>
+              <button type="submit" disabled={isSaving} className="px-6 py-2.5 rounded-full bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-md transition-colors text-sm">
+                {isSaving ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
+              </button>
+            </div>
+          </motion.form>
+        </div>
+      )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.form 
+            onSubmit={handleSave}
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            exit={{ opacity: 0, scale: 0.95 }} 
+            className="bg-white rounded-[2rem] w-full max-w-xl flex flex-col max-h-[90vh] overflow-hidden shadow-2xl"
+          >
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center shrink-0">
+              <h2 className="text-xl font-extrabold text-slate-800">
+                {formData.id ? '✏️ แก้ไขข้อมูล' : '✨ เพิ่มข้อมูลใหม่'} ({modalType === 'Events' ? 'ข่าวสาร' : 'กำหนดการ'})
+              </h2>
+              <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold text-xl p-2 rounded-full hover:bg-slate-100 transition-colors">✕</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
               
-              {/* ฟอร์มสำหรับแท็บข่าวสาร (Events) */}
               {modalType === 'Events' && (
                 <>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">หมวดหมู่</label>
+                    <select name="category" value={formData.category} onChange={handleChange} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-medium">
+                      <option value="กิจกรรม">กิจกรรม</option>
+                      <option value="วิชาการ">วิชาการ</option>
+                    </select>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1">หมวดหมู่</label>
-                        <select name="category" value={formData.category} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500">
-                          <option value="กิจกรรม">กิจกรรม</option><option value="วิชาการ">วิชาการ</option>
-                        </select>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">วันเริ่มต้น *</label>
+                        <input type="date" name="date" required value={formData.date || ''} onChange={handleChange} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1">วันที่</label>
-                        <input type="text" name="date" value={formData.date} onChange={handleChange} placeholder="เช่น 20 ต.ค. 2566" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">วันสิ้นสุด (ไม่บังคับ)</label>
+                        <input type="date" name="end_date" value={formData.end_date || ''} onChange={handleChange} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" />
                       </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">หัวข้อข่าว</label>
-                    <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">หัวข้อข่าว *</label>
+                    <input type="text" name="title" required value={formData.title || ''} onChange={handleChange} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" placeholder="หัวข้อข่าวสาร..." />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">รายละเอียด</label>
-                    <textarea name="desc" value={formData.desc} onChange={handleChange} rows="4" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500"></textarea>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">รายละเอียด</label>
+                    <textarea name="description" value={formData.description || ''} onChange={handleChange} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm placeholder-slate-300" placeholder="รายละเอียดเนื้อหา..."></textarea>
                   </div>
                   
-                  {/* ส่วนอัปโหลดรูปลง Supabase Storage แทนการกรอก URL เอง */}
                   <div className="border border-slate-200 p-4 rounded-xl bg-slate-50">
-                    <label className="block text-sm font-bold text-slate-700 mb-2">อัปโหลดรูปภาพ (Supabase Storage)</label>
-                    <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" />
-                    {isUploading && <p className="text-sm text-purple-600 mt-2 animate-pulse">กำลังอัปโหลดรูปภาพ...</p>}
+                    <div className="flex justify-between items-end mb-2">
+                       <label className="block text-[11px] font-bold text-slate-700">อัปโหลดรูปภาพหน้าปก</label>
+                       <span className="text-[10px] font-medium text-slate-500 bg-white px-2 py-1 rounded-md border border-slate-200 shadow-sm flex items-center gap-1">
+                         <span className="text-amber-500 text-[12px] leading-none">💡</span> แนะนำสัดส่วน 4:3 (ขนาด 800 x 600 px)
+                       </span>
+                    </div>
+                    <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors mt-2" />
+                    {isUploading && <p className="text-sm font-bold text-purple-600 mt-2 animate-pulse">กำลังอัปโหลดรูปภาพ...</p>}
                     
                     {formData.image && (
-                      <div className="mt-3">
-                        <p className="text-xs text-slate-400 mb-1">รูปภาพปัจจุบัน:</p>
-                        <img src={formData.image} alt="Preview" className="h-32 w-auto object-cover rounded-lg border border-slate-200" />
+                      <div className="mt-4 pt-4 border-t border-slate-200">
+                        <p className="text-[11px] font-bold text-slate-400 mb-2">รูปภาพปัจจุบัน:</p>
+                        <img src={formData.image} alt="Preview" className="h-32 w-auto object-cover rounded-lg border border-slate-200 shadow-sm" />
                       </div>
                     )}
                   </div>
                 </>
               )}
 
-              {/* ฟอร์มสำหรับแท็บกำหนดการ (Calendar) */}
               {modalType === 'Calendar' && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1">วันที่ (แบบย่อ)</label>
-                        <input type="text" name="short_date" value={formData.short_date || ''} onChange={handleChange} placeholder="เช่น: 10 ต.ค. 26" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">วันที่ (เลือกจากปฏิทิน)</label>
+                        <input type="date" name="short_date" required value={formData.short_date || ''} onChange={handleChange} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1">ความสำคัญ (สี)</label>
-                        <select name="theme" value={formData.theme} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500">
-                          <option value="slate">ปกติ (สีเทา)</option>
-                          <option value="rose">งานสำคัญ (สีแดง)</option>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">ความสำคัญ (สีบอกสถานะ)</label>
+                        <select name="theme" value={formData.theme || 'slate'} onChange={handleChange} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-medium">
+                          <option value="slate">🔘 ปกติ (สีเทา)</option>
+                          <option value="rose">🔴 งานสำคัญ (สีแดง)</option>
                         </select>
                       </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">ชื่อกำหนดการ / กิจกรรม</label>
-                    <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500" />
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">ชื่อกำหนดการ / กิจกรรม *</label>
+                    <input type="text" name="title" required value={formData.title || ''} onChange={handleChange} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm" placeholder="เช่น วันลงทะเบียนเรียน..." />
                   </div>
                 </>
               )}
-
             </div>
 
-            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
-              <button onClick={() => setIsModalOpen(false)} disabled={isSaving || isUploading} className="px-6 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-colors">ยกเลิก</button>
-              <button onClick={handleSave} disabled={isSaving || isUploading} className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-md transition-colors flex items-center gap-2">
+            <div className="px-6 py-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0">
+              <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSaving || isUploading} className="px-5 py-2.5 rounded-full text-slate-600 font-bold hover:bg-slate-200 transition-colors text-sm border border-transparent hover:border-slate-300">ยกเลิก</button>
+              <button type="submit" disabled={isSaving || isUploading} className="px-6 py-2.5 rounded-full bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-md transition-colors flex items-center gap-2 text-sm">
                 {isSaving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
-                บันทึกข้อมูล
+                {isSaving ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
               </button>
             </div>
-          </motion.div>
+
+          </motion.form>
         </div>
       )}
+      </AnimatePresence>
 
     </div>
   );
